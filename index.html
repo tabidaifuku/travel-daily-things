@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>旅遊大小事</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root { --bg:#f6f3ed; --panel:#fffdf8; --ink:#25302f; --muted:#6b7471; --line:#d8d0c2; --main:#0f766e; --danger:#b42318; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font-family:"Microsoft JhengHei","Noto Sans TC",system-ui,sans-serif; }
+    button,input,textarea,select { font:inherit; }
+    button { border:0; border-radius:6px; min-height:40px; padding:0 14px; cursor:pointer; font-weight:700; }
+    input,textarea,select { width:100%; border:1px solid var(--line); border-radius:6px; padding:10px; background:#fffefa; }
+    textarea { min-height:110px; resize:vertical; line-height:1.6; }
+    label { display:block; margin:0 0 6px; color:#45514e; font-size:13px; font-weight:700; }
+    h1,h2,h3,p { margin-top:0; }
+    .app { width:min(1180px,calc(100% - 28px)); margin:0 auto; padding:28px 0 48px; }
+    .top { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:18px; }
+    .top h1 { font-size:clamp(28px,4vw,44px); margin-bottom:8px; }
+    .muted { color:var(--muted); line-height:1.7; }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; box-shadow:0 16px 44px rgba(42,35,25,.1); }
+    .grid { display:grid; grid-template-columns:380px 1fr; gap:18px; align-items:start; }
+    .two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .field { margin-bottom:12px; }
+    .primary { background:var(--main); color:white; }
+    .secondary { background:#eeeae1; color:#303b38; border:1px solid var(--line); }
+    .danger { background:#fff0ed; color:var(--danger); border:1px solid #efb6ac; }
+    .ghost { background:transparent; color:#0e625c; border:1px solid #b9d7d3; }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .hidden { display:none !important; }
+    .tabs { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+    .type-switch { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+    .type-switch button.active { background:var(--main); color:white; }
+    .card-list { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+    .card { border:1px solid var(--line); border-radius:8px; background:#fffefa; padding:13px; display:grid; gap:8px; }
+    .card.cancelled { background:#eeeeee; border-color:#cfcfcf; color:#686868; }
+    .card.cancelled .link-button { color:#686868; }
+    .card.cancelled .badge { background:#dedede; color:#666; }
+    .card.completed { background:#f5f5f5; border-color:#d6d6d6; color:#777; }
+    .card.completed .link-button { color:#777; }
+    .card.completed .badge { background:#cfcfcf; color:#555; }
+    .card.final-waiting { background:#fff7e6; border-color:#d97706; }
+    .card.final-waiting .link-button { color:#92400e; }
+    .card.final-waiting .badge { background:#d97706; color:white; }
+    .card.new-waiting { background:#eaf6f4; border-color:#0f766e; }
+    .card.new-waiting .link-button { color:#0f5f59; }
+    .card.new-waiting .badge { background:#0f766e; color:white; }
+    .card.customer-waiting { background:#eaf6f4; border-color:#0f766e; }
+    .card.customer-waiting .link-button { color:#0f5f59; }
+    .card.customer-waiting .badge { background:#0f766e; color:white; }
+    .card.reservation-ok { background:#eaf3ff; border-color:#4d8fd8; }
+    .card.reservation-ok .link-button { color:#225f9f; }
+    .card.reservation-ok .badge { background:#4d8fd8; color:white; }
+    .card-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+    .link-button { background:transparent; padding:0; min-height:auto; color:#0f5f59; text-align:left; text-decoration:underline; text-underline-offset:3px; font-size:18px; }
+    .meta { display:flex; flex-wrap:wrap; gap:8px 12px; color:var(--muted); font-size:13px; line-height:1.6; }
+    .badge { display:inline-flex; align-items:center; min-height:26px; border-radius:999px; padding:0 9px; background:#e8f4f2; color:#0f5f59; font-size:13px; font-weight:700; white-space:nowrap; }
+    .modal-bg { position:fixed; inset:0; background:rgba(25,33,31,.45); display:none; align-items:center; justify-content:center; padding:18px; z-index:10; }
+    .modal-bg.open { display:flex; }
+    .modal { width:min(900px,100%); max-height:92vh; overflow:auto; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
+    .modal-head { position:sticky; top:0; background:#faf7ef; border-bottom:1px solid var(--line); padding:14px 16px; display:flex; justify-content:space-between; gap:12px; }
+    .modal-actions { display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap; justify-content:flex-end; }
+    .modal-body { padding:16px; display:grid; gap:14px; }
+    .site-footer { margin-top:22px; padding:16px 0 0; color:var(--muted); font-size:12px; text-align:center; line-height:1.7; }
+    .detail-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .detail { border:1px solid #ece6da; border-radius:6px; padding:10px; background:#fffefa; }
+    .detail span { display:block; color:var(--muted); font-size:12px; margin-bottom:4px; }
+    .note { border-left:3px solid var(--main); background:white; border-radius:6px; padding:9px 10px; line-height:1.6; }
+    .note time { display:block; color:var(--muted); font-size:12px; margin-bottom:4px; }
+    .pre-line { white-space:pre-wrap; word-break:break-word; }
+    .final-box { border:2px solid #d97706; background:#fff7e6; border-radius:8px; padding:14px; }
+    .final-box h3 { color:#92400e; margin-bottom:10px; }
+    .final-box .note { border-left-color:#d97706; background:#fffdf7; }
+    .final-button { background:#d97706; color:white; border:1px solid #b45309; }
+    .final-note { border-left-color:#d97706; background:#fff7e6; }
+    .cancel-button { background:#c65f5f; color:white; border:1px solid #ad4d4d; }
+    .cancel-box { border:2px solid #d98b8b; background:#fff0f0; border-radius:8px; padding:14px; }
+    .cancel-box h3 { color:#9f3f3f; margin-bottom:10px; }
+    .cancel-note { border-left-color:#c65f5f; background:#fff0f0; }
+    @media (max-width:900px) { .grid,.two,.detail-grid { grid-template-columns:1fr; } .top { display:grid; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="top">
+      <div>
+        <h1>旅遊大小事</h1>
+        <p class="muted">訂房、訂車、訂餐、 and anything... 問我。</p>
+      </div>
+      <div class="actions">
+        <span class="badge hidden" id="userBadge"></span>
+        <button class="secondary hidden" id="signOutBtn" type="button">登出</button>
+      </div>
+    </header>
+
+    <section class="panel" id="authPanel">
+      <h2>登入</h2>
+      <div class="two">
+        <div class="field"><label for="authEmail">e-mail</label><input id="authEmail" type="email"></div>
+        <div class="field"><label for="authPassword">密碼</label><input id="authPassword" type="password"></div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="loginBtn" type="button">登入</button>
+      </div>
+      <p class="muted" id="authMessage">帳號由管理者提供，請使用收到的 e-mail 與密碼登入。</p>
+    </section>
+
+    <section class="grid hidden" id="mainPanel">
+      <form class="panel" id="bookingForm">
+        <h2>新增訂單</h2>
+        <input id="bookingType" type="hidden" value="general">
+        <div class="two">
+          <div class="field"><label for="departureDate">出發日期</label><input id="departureDate" type="date" required></div>
+          <div class="field"><label for="returnDate">結束日期</label><input id="returnDate" type="date" required></div>
+        </div>
+        <div class="two">
+          <div class="field"><label for="groupName">團體名稱</label><input id="groupName" type="text" required></div>
+          <div class="field"><label for="peopleCount">人數</label><input id="peopleCount" type="number" min="0"></div>
+        </div>
+        <div class="field"><label for="guideName">担当者</label><input id="guideName" type="text"></div>
+        <div class="field"><label for="itinerary">預約內容</label><textarea id="itinerary" required></textarea></div>
+        <button class="primary" type="submit">送出</button>
+        <p class="muted" id="formMessage"></p>
+      </form>
+
+      <section class="panel">
+        <div class="tabs">
+          <input id="searchInput" type="search" placeholder="搜尋團體名稱、預約者、担当者、預約內容">
+          <button class="secondary hidden" id="adminRefreshBtn" type="button">重新整理</button>
+        </div>
+        <ul class="card-list" id="bookingList"></ul>
+      </section>
+    </section>
+    <footer class="site-footer">
+      <div>旅遊大小事｜created in 2026</div>
+      <div>managed by natuho</div>
+    </footer>
+  </main>
+
+  <div class="modal-bg" id="detailModal">
+    <section class="modal">
+      <div class="modal-head">
+        <div><h2 id="modalTitle">團體資料</h2><div class="meta" id="modalMeta"></div></div>
+        <div class="modal-actions">
+          <button class="primary hidden" id="modalEditBtn" type="button" onclick="showChangeForm()">編輯</button>
+          <button class="final-button hidden" id="modalFinalBtn" type="button" onclick="showFinalForm()">FINAL</button>
+          <button class="cancel-button hidden" id="modalCancelBtn" type="button" onclick="showCancelForm()">取消</button>
+          <button class="secondary" type="button" onclick="closeModal()">關閉</button>
+        </div>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </section>
+  </div>
+
+  <script>
+    const supabaseUrl = "https://awlrmtyynguetdsxswgc.supabase.co";
+    const supabaseKey = "sb_publishable_-3c0c7c4grzS7_OaNfRALw_Xv31hjIT";
+    const client = supabase.createClient(supabaseUrl, supabaseKey);
+    const adminEmail = "sumomo.iwa@gmail.com";
+    let sessionUser = null;
+    let profile = null;
+    let bookings = [];
+    let activeBooking = null;
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (value) => String(value ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    const fmt = (value) => value ? value.replaceAll("-", "/") : "未填";
+
+    function setMessage(id, text) { $(id).textContent = text || ""; }
+
+    async function init() {
+      $("loginBtn").onclick = login;
+      $("signOutBtn").onclick = signOut;
+      $("searchInput").oninput = renderList;
+      $("adminRefreshBtn").onclick = loadBookings;
+      $("bookingForm").onsubmit = createBooking;
+      $("departureDate").onchange = syncReturnDateMin;
+      const { data } = await client.auth.getSession();
+      if (data.session?.user) await enterApp(data.session.user);
+    }
+
+    async function login() {
+      setMessage("authMessage", "登入中...");
+      const { data, error } = await client.auth.signInWithPassword({
+        email: $("authEmail").value.trim(),
+        password: $("authPassword").value
+      });
+      if (error) return setMessage("authMessage", error.message);
+      await enterApp(data.user);
+    }
+
+    async function signOut() {
+      await client.auth.signOut();
+      location.reload();
+    }
+
+    async function enterApp(user) {
+      sessionUser = user;
+      $("authPanel").classList.add("hidden");
+      $("mainPanel").classList.remove("hidden");
+      $("signOutBtn").classList.remove("hidden");
+      $("userBadge").classList.remove("hidden");
+      await ensureProfile();
+      $("userBadge").textContent = `${profile.display_name}｜${profile.role === "admin" ? "管理者" : "客戶"}`;
+      syncReturnDateMin();
+      $("adminRefreshBtn").classList.toggle("hidden", profile.role !== "admin");
+      await loadBookings();
+    }
+
+    async function ensureProfile() {
+      const { data } = await client.from("profiles").select("*").eq("id", sessionUser.id).single();
+      if (data) { profile = data; return; }
+      const role = sessionUser.email.toLowerCase() === adminEmail ? "admin" : "customer";
+      const fallback = {
+        id: sessionUser.id,
+        email: sessionUser.email,
+        display_name: sessionUser.email.toLowerCase() === adminEmail ? "Natuho" : sessionUser.email.split("@")[0],
+        role
+      };
+      const { data: inserted, error } = await client.from("profiles").insert(fallback).select().single();
+      if (error) throw error;
+      profile = inserted;
+    }
+
+    async function createBooking(event) {
+      event.preventDefault();
+      setMessage("formMessage", "送出中...");
+      const payload = {
+        user_id: sessionUser.id,
+        booking_type: "general",
+        departure_date: $("departureDate").value,
+        return_date: $("returnDate").value,
+        group_name: $("groupName").value.trim(),
+        booker_name: profile.display_name || sessionUser.email.split("@")[0],
+        email: profile.email || sessionUser.email,
+        vehicle_type: "",
+        people_count: $("peopleCount").value ? Number($("peopleCount").value) : null,
+        guide_name: $("guideName").value.trim(),
+        phone: "",
+        itinerary: $("itinerary").value.trim(),
+        hotel_name: null,
+        room_count: null,
+        meal_plan: null,
+        status: "新規待回覆"
+      };
+      const { error } = await client.from("booking_requests").insert(payload);
+      if (error) return setMessage("formMessage", error.message);
+      $("bookingForm").reset();
+      setMessage("formMessage", "已送出。");
+      await loadBookings();
+    }
+
+    async function loadBookings() {
+      const { data, error } = await client.from("booking_requests").select("*").order("created_at", { ascending:false });
+      if (error) { $("bookingList").innerHTML = `<li class="card">${esc(error.message)}</li>`; return; }
+      bookings = data || [];
+      await autoCompletePastBookings();
+      renderList();
+    }
+
+    function renderList() {
+      const q = $("searchInput").value.trim().toLowerCase();
+      const filtered = bookings
+        .filter((b) => [b.group_name,b.booker_name,b.vehicle_type,b.guide_name,b.itinerary,b.email,b.hotel_name,b.meal_plan,b.booking_type].join(" ").toLowerCase().includes(q))
+        .sort((a, b) => {
+          const aClosed = a.status === "已完成";
+          const bClosed = b.status === "已完成";
+          if (aClosed && !bClosed) return 1;
+          if (!aClosed && bClosed) return -1;
+          return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
+            || (a.departure_date || "").localeCompare(b.departure_date || "");
+        });
+      $("bookingList").innerHTML = filtered.length ? filtered.map((b) => `
+        <li class="card ${b.status === "取消" ? "cancelled" : ""} ${b.status === "已完成" ? "completed" : ""} ${["FINAL等候回覆", "FINAL已確認"].includes(b.status) ? "final-waiting" : ""} ${b.status === "新規待回覆" ? "new-waiting" : ""} ${b.status === "等待客戶回覆" ? "customer-waiting" : ""} ${b.status === "預約OK" ? "reservation-ok" : ""}">
+          <div class="card-head">
+            <button class="link-button" type="button" onclick="openBooking('${b.id}')">${esc(b.group_name)}</button>
+            <span class="badge">${esc(b.status)}</span>
+          </div>
+          <div class="meta">
+            <span>出發：${fmt(b.departure_date)}</span>
+            <span>結束：${fmt(b.return_date)}</span>
+            <span>預約者：${esc(b.booker_name)}</span>
+            ${b.people_count ? `<span>人數：${esc(b.people_count)}</span>` : ""}
+          </div>
+        </li>`).join("") : `<li class="card">目前沒有資料。</li>`;
+    }
+
+    function syncReturnDateMin() {
+      $("returnDate").min = $("departureDate").value || "";
+      if ($("departureDate").value && $("returnDate").value && $("returnDate").value < $("departureDate").value) {
+        $("returnDate").value = "";
+      }
+    }
+
+    function syncChangeReturnDateMin() {
+      if (!$("chgDeparture") || !$("chgReturn")) return;
+      $("chgReturn").min = $("chgDeparture").value || "";
+      if ($("chgDeparture").value && $("chgReturn").value && $("chgReturn").value < $("chgDeparture").value) {
+        $("chgReturn").value = "";
+      }
+    }
+
+    async function openBooking(id) {
+      activeBooking = bookings.find((b) => b.id === id);
+      if (!activeBooking) return;
+      const [{ data: replies }, { data: changes }] = await Promise.all([
+        client.from("booking_replies").select("*").eq("booking_id", id).order("created_at", { ascending:true }),
+        client.from("booking_change_requests").select("*").eq("booking_id", id).order("created_at", { ascending:false })
+      ]);
+      $("modalTitle").textContent = activeBooking.group_name;
+      $("modalMeta").innerHTML = `<span class="badge">${esc(activeBooking.status)}</span><span>出發：${fmt(activeBooking.departure_date)}</span><span>結束：${fmt(activeBooking.return_date)}</span>`;
+      $("modalEditBtn").classList.toggle("hidden", profile.role === "admin" || activeBooking.status === "取消");
+      $("modalFinalBtn").classList.toggle("hidden", profile.role === "admin" || activeBooking.status === "取消");
+      $("modalCancelBtn").classList.toggle("hidden", profile.role === "admin" || activeBooking.status === "取消");
+      $("modalBody").innerHTML = `
+        <section class="detail-grid">
+          ${detail("預約者", activeBooking.booker_name)}
+          ${detail("e-mail", activeBooking.email)}
+          ${detail("人數", activeBooking.people_count)}
+          ${detail("担当者", activeBooking.guide_name)}
+        </section>
+        <section><h3>預約內容</h3><p class="note pre-line">${esc(activeBooking.itinerary)}</p></section>
+        ${activeBooking.hotel_name || activeBooking.meal_plan || activeBooking.phone ? `
+          <section class="final-box">
+            <h3>最終內容</h3>
+            <p class="note pre-line">${esc(activeBooking.hotel_name || "未填")}</p>
+            <div class="detail-grid">
+              ${detail("導遊/代表人", activeBooking.meal_plan)}
+              ${detail("電話", activeBooking.phone)}
+            </div>
+          </section>
+        ` : ""}
+        <section>
+          <h3>回覆紀錄</h3>
+          ${(replies || []).length ? replies.map((r) => `<div class="note pre-line ${r.message === "已填寫 FINAL。" ? "final-note" : ""} ${r.message.startsWith("已取消。") ? "cancel-note" : ""}"><time>${esc(r.author_name)}　${new Date(r.created_at).toLocaleString("zh-TW", { hour12:false })}</time>${esc(r.message)}</div>`).join("") : `<div class="note">尚無回覆。</div>`}
+        </section>
+          ${profile.role === "admin" ? adminTools(activeBooking, changes || []) : customerTools(activeBooking, changes || [])}
+      `;
+      $("detailModal").classList.add("open");
+    }
+
+    function detail(label, value) { return `<div class="detail"><span>${label}</span>${esc(value || "未填")}</div>`; }
+
+    function statusOptions(current) {
+      return ["等待客戶回覆", "預約OK", "FINAL等候回覆", "FINAL已確認", "已完成", "取消"]
+        .map((status) => `<option value="${status}" ${current === status ? "selected" : ""}>${status}</option>`)
+        .join("");
+    }
+
+    async function autoCompletePastBookings() {
+      const today = new Date().toISOString().slice(0, 10);
+      const targets = bookings.filter((b) => b.return_date && b.return_date < today && !["已完成", "取消"].includes(b.status));
+      if (!targets.length) return;
+      await Promise.all(targets.map((b) => client.from("booking_requests").update({
+        status: "已完成",
+        updated_at: new Date().toISOString()
+      }).eq("id", b.id)));
+      bookings = bookings.map((b) => targets.some((target) => target.id === b.id) ? { ...b, status: "已完成" } : b);
+    }
+
+    function adminTools(b, changes) {
+      return `
+        <section>
+          <h3>管理者回覆</h3>
+          <div class="field"><label for="replyText">回覆內容</label><textarea id="replyText"></textarea></div>
+          <div class="two">
+            <div class="field"><label for="statusSelect">狀態</label><select id="statusSelect">
+              ${statusOptions(b.status)}
+            </select></div>
+            <div class="field"><label>&nbsp;</label><button class="primary" type="button" onclick="sendReply()">送出回覆</button></div>
+          </div>
+        </section>
+        `;
+    }
+
+    function customerTools(b, changes) {
+      return `
+        <section>
+          <div id="changeForm" class="hidden" style="margin-top:12px">
+            <h3>修改內容</h3>
+            <div class="two"><div class="field"><label for="chgDeparture">出發日期</label><input id="chgDeparture" type="date" value="${esc(b.departure_date)}"></div><div class="field"><label for="chgReturn">結束日期</label><input id="chgReturn" type="date" value="${esc(b.return_date)}"></div></div>
+            <div class="two"><div class="field"><label for="chgGroup">團體名稱</label><input id="chgGroup" type="text" value="${esc(b.group_name)}"></div><div class="field"><label for="chgPeople">人數</label><input id="chgPeople" type="number" value="${esc(b.people_count)}"></div></div>
+            <input id="chgEmail" type="hidden" value="${esc(b.email)}">
+            <input id="chgVehicle" type="hidden" value="">
+            <input id="chgHotelName" type="hidden" value="">
+            <input id="chgRoomCount" type="hidden" value="">
+            <input id="chgMealPlan" type="hidden" value="">
+            <input id="chgPhone" type="hidden" value="">
+            <div class="field"><label for="chgGuide">担当者</label><input id="chgGuide" type="text" value="${esc(b.guide_name)}"></div>
+            <div class="field"><label for="chgItinerary">預約內容</label><textarea id="chgItinerary">${esc(b.itinerary)}</textarea></div>
+            <button class="primary" type="button" onclick="requestChange()">送出修改</button>
+          </div>
+          <div id="finalForm" class="hidden" style="margin-top:12px">
+            <h3>FINAL</h3>
+            <div class="field"><label for="finalContent">最終內容</label><textarea id="finalContent" required>${esc(b.hotel_name)}</textarea></div>
+            <div class="two">
+              <div class="field"><label for="finalRepresentative">導遊/代表人</label><input id="finalRepresentative" type="text" required value="${esc(b.meal_plan)}"></div>
+              <div class="field"><label for="finalPhone">電話</label><input id="finalPhone" type="tel" required value="${esc(b.phone)}"></div>
+            </div>
+            <button class="primary" type="button" onclick="saveFinal()">送出</button>
+          </div>
+          <div id="cancelForm" class="cancel-box hidden" style="margin-top:12px">
+            <h3>取消</h3>
+            <div class="field"><label for="cancelReason">取消原因</label><textarea id="cancelReason" required></textarea></div>
+            <button class="cancel-button" type="button" onclick="cancelBooking()">送出取消</button>
+          </div>
+        </section>`;
+    }
+
+    async function sendReply() {
+      const message = $("replyText").value.trim();
+      const status = $("statusSelect").value;
+      if (message) await client.from("booking_replies").insert({ booking_id: activeBooking.id, author_id: sessionUser.id, author_name:"Natuho", message });
+      await client.from("booking_requests").update({ status, updated_at:new Date().toISOString() }).eq("id", activeBooking.id);
+      await loadBookings();
+      await openBooking(activeBooking.id);
+    }
+
+    function showChangeForm() {
+      $("changeForm").classList.remove("hidden");
+      $("finalForm").classList.add("hidden");
+      $("cancelForm").classList.add("hidden");
+      syncChangeReturnDateMin();
+      $("chgDeparture").onchange = syncChangeReturnDateMin;
+    }
+
+    function showFinalForm() {
+      $("finalForm").classList.remove("hidden");
+      $("changeForm").classList.add("hidden");
+      $("cancelForm").classList.add("hidden");
+    }
+
+    function showCancelForm() {
+      $("cancelForm").classList.remove("hidden");
+      $("changeForm").classList.add("hidden");
+      $("finalForm").classList.add("hidden");
+    }
+
+    async function requestChange() {
+      const payload = {
+        departure_date:$("chgDeparture").value, return_date:$("chgReturn").value, group_name:$("chgGroup").value.trim(),
+        email:$("chgEmail").value.trim(), vehicle_type:$("chgVehicle").value.trim(), people_count:$("chgPeople").value ? Number($("chgPeople").value) : null,
+        guide_name:$("chgGuide").value.trim(), phone:$("chgPhone").value.trim(), itinerary:$("chgItinerary").value.trim(),
+        booking_type: "general",
+        hotel_name: $("chgHotelName").value.trim() || null,
+        room_count: $("chgRoomCount").value ? Number($("chgRoomCount").value) : null,
+        meal_plan: $("chgMealPlan").value || null,
+        updated_at: new Date().toISOString()
+      };
+      await client.from("booking_requests").update(payload).eq("id", activeBooking.id);
+      await client.from("booking_replies").insert({
+        booking_id: activeBooking.id,
+        author_id: sessionUser.id,
+        author_name: profile.display_name || activeBooking.booker_name || "客戶",
+        message: "已修改內容。"
+      });
+      await loadBookings();
+      await openBooking(activeBooking.id);
+    }
+
+    async function cancelBooking() {
+      const reason = $("cancelReason").value.trim();
+      if (!reason) {
+        alert("請填寫取消原因。");
+        return;
+      }
+      await client.from("booking_requests").update({
+        status: "取消",
+        updated_at: new Date().toISOString()
+      }).eq("id", activeBooking.id);
+      await client.from("booking_replies").insert({
+        booking_id: activeBooking.id,
+        author_id: sessionUser.id,
+        author_name: profile.display_name || activeBooking.booker_name || "客戶",
+        message: `已取消。\n取消原因：${reason}`
+      });
+      await loadBookings();
+      await openBooking(activeBooking.id);
+    }
+
+    async function saveFinal() {
+      const finalContent = $("finalContent").value.trim();
+      const representative = $("finalRepresentative").value.trim();
+      const phone = $("finalPhone").value.trim();
+      if (!finalContent || !representative || !phone) {
+        alert("請填寫最終內容、導遊/代表人、電話。");
+        return;
+      }
+      await client.from("booking_requests").update({
+        hotel_name: finalContent,
+        meal_plan: representative,
+        phone,
+        status: "FINAL等候回覆",
+        updated_at: new Date().toISOString()
+      }).eq("id", activeBooking.id);
+      await client.from("booking_replies").insert({
+        booking_id: activeBooking.id,
+        author_id: sessionUser.id,
+        author_name: profile.display_name || activeBooking.booker_name || "客戶",
+        message: "已填寫 FINAL。"
+      });
+      await loadBookings();
+      await openBooking(activeBooking.id);
+    }
+
+    function closeModal() { $("detailModal").classList.remove("open"); }
+    $("detailModal").addEventListener("click", (event) => { if (event.target === $("detailModal")) closeModal(); });
+    init();
+  </script>
+</body>
+</html>
