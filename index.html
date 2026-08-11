@@ -97,13 +97,13 @@
     <section class="panel" id="authPanel">
       <h2>登入</h2>
       <div class="two">
-        <div class="field"><label for="authEmail">e-mail</label><input id="authEmail" type="email"></div>
-        <div class="field"><label for="authPassword">密碼</label><input id="authPassword" type="password"></div>
+        <div class="field"><label for="authEmail">e-mail</label><input id="authEmail" type="email" autocomplete="username"></div>
+        <div class="field"><label for="authPassword">密碼</label><input id="authPassword" type="password" autocomplete="current-password"></div>
       </div>
       <div class="actions">
         <button class="primary" id="loginBtn" type="button">登入</button>
       </div>
-      <p class="muted" id="authMessage">帳號由管理者提供，請使用收到的 e-mail 與密碼登入。</p>
+      <p class="muted" id="authMessage"></p>
     </section>
 
     <section class="grid hidden" id="mainPanel">
@@ -118,7 +118,7 @@
           <div class="field"><label for="groupName">團體名稱</label><input id="groupName" type="text" required></div>
           <div class="field"><label for="peopleCount">人數</label><input id="peopleCount" type="number" min="0"></div>
         </div>
-        <div class="field"><label for="guideName">担当者</label><input id="guideName" type="text"></div>
+        <div class="field"><label for="guideName">預約者姓名</label><input id="guideName" type="text"></div>
         <div class="field"><label for="itinerary">預約內容</label><textarea id="itinerary" required></textarea></div>
         <button class="primary" type="submit">送出</button>
         <p class="muted" id="formMessage"></p>
@@ -126,7 +126,7 @@
 
       <section class="panel">
         <div class="tabs">
-          <input id="searchInput" type="search" placeholder="搜尋團體名稱、預約者、担当者、預約內容">
+          <input id="searchInput" type="search" placeholder="搜尋團體名稱、預約者姓名、預約內容">
           <button class="secondary hidden" id="adminRefreshBtn" type="button">重新整理</button>
         </div>
         <ul class="card-list" id="bookingList"></ul>
@@ -171,6 +171,8 @@
 
     async function init() {
       $("loginBtn").onclick = login;
+      $("authEmail").onkeydown = submitLoginOnEnter;
+      $("authPassword").onkeydown = submitLoginOnEnter;
       $("signOutBtn").onclick = signOut;
       $("searchInput").oninput = renderList;
       $("adminRefreshBtn").onclick = loadBookings;
@@ -182,12 +184,31 @@
 
     async function login() {
       setMessage("authMessage", "登入中...");
+      if (!$("authEmail").value.trim()) {
+        setMessage("authMessage", "請輸入帳號。");
+        return;
+      }
+      if (!$("authPassword").value) {
+        setMessage("authMessage", "請輸入密碼。");
+        return;
+      }
       const { data, error } = await client.auth.signInWithPassword({
         email: $("authEmail").value.trim(),
         password: $("authPassword").value
       });
-      if (error) return setMessage("authMessage", error.message);
+      if (error) return setMessage("authMessage", friendlyAuthError(error.message));
       await enterApp(data.user);
+    }
+
+    function friendlyAuthError(message) {
+      if (message?.toLowerCase().includes("invalid login")) return "帳號或密碼不正確。";
+      if (message?.toLowerCase().includes("email not confirmed")) return "帳號尚未啟用，請聯絡管理者。";
+      if (message?.toLowerCase().includes("missing email")) return "請輸入帳號。";
+      return message || "登入失敗，請再試一次。";
+    }
+
+    function submitLoginOnEnter(event) {
+      if (event.key === "Enter") login();
     }
 
     async function signOut() {
@@ -202,7 +223,7 @@
       $("signOutBtn").classList.remove("hidden");
       $("userBadge").classList.remove("hidden");
       await ensureProfile();
-      $("userBadge").textContent = `${profile.display_name}｜${profile.role === "admin" ? "管理者" : "客戶"}`;
+      $("userBadge").textContent = `${profile.display_name}｜${profile.role === "admin" ? "管理者" : "登入中"}`;
       syncReturnDateMin();
       $("adminRefreshBtn").classList.toggle("hidden", profile.role !== "admin");
       await loadBookings();
@@ -315,10 +336,11 @@
       $("modalCancelBtn").classList.toggle("hidden", profile.role === "admin" || activeBooking.status === "取消");
       $("modalBody").innerHTML = `
         <section class="detail-grid">
-          ${detail("預約者", activeBooking.booker_name)}
-          ${detail("e-mail", activeBooking.email)}
+          ${detail("旅行社", activeBooking.booker_name)}
+          ${detail("團體名稱", activeBooking.group_name)}
           ${detail("人數", activeBooking.people_count)}
-          ${detail("担当者", activeBooking.guide_name)}
+          ${detail("團體旅遊期間", `${fmt(activeBooking.departure_date)} ～ ${fmt(activeBooking.return_date)}`)}
+          ${detail("預約者名", activeBooking.guide_name)}
         </section>
         <section><h3>預約內容</h3><p class="note pre-line">${esc(activeBooking.itinerary)}</p></section>
         ${activeBooking.hotel_name || activeBooking.meal_plan || activeBooking.phone ? `
@@ -387,7 +409,7 @@
             <input id="chgRoomCount" type="hidden" value="">
             <input id="chgMealPlan" type="hidden" value="">
             <input id="chgPhone" type="hidden" value="">
-            <div class="field"><label for="chgGuide">担当者</label><input id="chgGuide" type="text" value="${esc(b.guide_name)}"></div>
+            <div class="field"><label for="chgGuide">預約者姓名</label><input id="chgGuide" type="text" value="${esc(b.guide_name)}"></div>
             <div class="field"><label for="chgItinerary">預約內容</label><textarea id="chgItinerary">${esc(b.itinerary)}</textarea></div>
             <button class="primary" type="button" onclick="requestChange()">送出修改</button>
           </div>
