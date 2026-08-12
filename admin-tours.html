@@ -44,6 +44,11 @@
     .day-card { border: 1px solid #c9d9d6; background: #fffefa; border-radius: 8px; padding: 14px; margin-bottom: 12px; }
     .day-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 12px; }
     .day-head h3 { margin: 0; color: #173e52; }
+    .image-controls { border: 1px solid #e5ded3; border-radius: 8px; padding: 10px; background: #fffefa; }
+    .image-controls h4 { margin: 0 0 8px; color: #173e52; }
+    .range-row { display: grid; grid-template-columns: 86px 1fr 44px; gap: 8px; align-items: center; margin-top: 8px; }
+    .range-row label { margin: 0; }
+    input[type="range"] { padding: 0; }
     .library { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 10px; }
     .library button { min-height: 32px; padding: 0 10px; background: var(--soft); color: var(--green-dark); border: 1px solid #cde4e0; font-size: 13px; }
     .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -106,6 +111,12 @@
           <input id="heroImageFile" type="file" accept="image/jpeg,image/png,image/webp">
           <div class="hint">可直接選 JPG / PNG / WebP，系統會自動填入上方照片網址。</div>
           <div class="upload-status" id="heroUploadMessage"></div>
+        </div>
+        <div class="image-controls">
+          <h4>主視覺顯示調整</h4>
+          <div class="range-row"><label for="heroPosX">左右</label><input id="heroPosX" type="range" min="0" max="100" value="50" oninput="syncRangeValue('heroPosX')"><span id="heroPosXValue">50%</span></div>
+          <div class="range-row"><label for="heroPosY">上下</label><input id="heroPosY" type="range" min="0" max="100" value="50" oninput="syncRangeValue('heroPosY')"><span id="heroPosYValue">50%</span></div>
+          <div class="range-row"><label for="heroZoom">縮放</label><input id="heroZoom" type="range" min="100" max="180" value="100" oninput="syncRangeValue('heroZoom')"><span id="heroZoomValue">100%</span></div>
         </div>
         <div class="field"><label for="notice">注意事項</label><textarea id="notice"></textarea></div>
 
@@ -263,6 +274,7 @@
       $("daysArea").innerHTML = "";
       for (let i = 0; i < count; i += 1) {
         const day = days[i] || {};
+        const styles = day.imageStyles || [];
         const div = document.createElement("div");
         div.className = "day-card";
         div.innerHTML = `
@@ -270,6 +282,9 @@
           <div class="field"><label>當天行程標題</label><input id="dayTitle${i}" value="${escapeAttr(day.title || "")}"></div>
           <div class="grid-3">
             ${[0, 1, 2].map((n) => `<div class="field"><label>圖片 ${n + 1}</label><input id="dayImage${i}_${n}" value="${escapeAttr((day.images || [])[n] || "")}"></div>`).join("")}
+          </div>
+          <div class="grid-3">
+            ${[0, 1, 2].map((n) => imageControlHtml(i, n, styles[n])).join("")}
           </div>
           <div class="field">
             <label>上傳 Day ${i + 1} 圖片</label>
@@ -290,6 +305,25 @@
         `;
         $("daysArea").appendChild(div);
       }
+    }
+
+    function imageControlHtml(dayIndex, imageIndex, style = {}) {
+      const prefix = `dayImageStyle${dayIndex}_${imageIndex}`;
+      const x = Number(style.x ?? 50);
+      const y = Number(style.y ?? 50);
+      const zoom = Number(style.zoom ?? 100);
+      return `
+        <div class="image-controls">
+          <h4>圖片 ${imageIndex + 1} 顯示調整</h4>
+          <div class="range-row"><label for="${prefix}X">左右</label><input id="${prefix}X" type="range" min="0" max="100" value="${x}" oninput="syncRangeValue('${prefix}X')"><span id="${prefix}XValue">${x}%</span></div>
+          <div class="range-row"><label for="${prefix}Y">上下</label><input id="${prefix}Y" type="range" min="0" max="100" value="${y}" oninput="syncRangeValue('${prefix}Y')"><span id="${prefix}YValue">${y}%</span></div>
+          <div class="range-row"><label for="${prefix}Zoom">縮放</label><input id="${prefix}Zoom" type="range" min="100" max="180" value="${zoom}" oninput="syncRangeValue('${prefix}Zoom')"><span id="${prefix}ZoomValue">${zoom}%</span></div>
+        </div>
+      `;
+    }
+
+    function syncRangeValue(id) {
+      if ($(id) && $(`${id}Value`)) $(`${id}Value`).textContent = `${$(id).value}%`;
     }
 
     function addLibraryImage(dayIndex, category) {
@@ -417,7 +451,8 @@
         const detail = $(`dayDetail${i}`).value.trim();
         const body = `${detail}\n\n早餐：${$(`dayBreakfast${i}`).value.trim()}\n午餐：${$(`dayLunch${i}`).value.trim()}\n晚餐：${$(`dayDinner${i}`).value.trim()}\n住宿：${$(`dayHotel${i}`).value.trim()}`;
         const images = [0, 1, 2].map((n) => $(`dayImage${i}_${n}`).value.trim()).filter(Boolean);
-        days.push([title, body, images]);
+        const imageStyles = [0, 1, 2].map((n) => collectImageStyle(`dayImageStyle${i}_${n}`));
+        days.push([title, body, images, imageStyles]);
       }
       const flights = [
         collectFlight("去程", "out"),
@@ -427,6 +462,7 @@
         title: $("title").value.trim(),
         subtitle: $("subtitle").value.trim(),
         image: $("heroImage").value.trim(),
+        heroStyle: collectImageStyle("hero"),
         info: [["天數", `${$("daysCount").value}天`], ["價格", $("price").value.trim()]],
         price: $("price").value.trim(),
         flights,
@@ -450,6 +486,34 @@
       };
     }
 
+    function normalizeDay(day) {
+      const title = day[0] || "";
+      const body = day[1] || "";
+      const images = Array.isArray(day[2]) ? day[2] : day[2] ? [day[2]] : [];
+      const imageStyles = Array.isArray(day[3]) ? day[3] : [];
+      const mealStart = body.indexOf("早餐：");
+      const detail = mealStart >= 0 ? body.slice(0, mealStart).trim() : body;
+      const meals = mealStart >= 0 ? body.slice(mealStart).trim().split("\n") : [];
+      return {
+        title: title.replace(/^Day\s*\d+\s*/i, ""),
+        images,
+        imageStyles,
+        detail,
+        breakfast: cleanMeal(meals[0], "早餐："),
+        lunch: cleanMeal(meals[1], "午餐："),
+        dinner: cleanMeal(meals[2], "晚餐："),
+        hotel: cleanMeal(meals[3], "住宿：")
+      };
+    }
+
+    function collectImageStyle(prefix) {
+      return {
+        x: Number($(`${prefix}X`)?.value || 50),
+        y: Number($(`${prefix}Y`)?.value || 50),
+        zoom: Number($(`${prefix}Zoom`)?.value || 100)
+      };
+    }
+
     function fillForm(row) {
       currentId = row.id;
       const payload = row.payload || {};
@@ -458,23 +522,26 @@
       $("price").value = payload.price || row.price || "";
       $("heroImage").value = payload.image || row.hero_image || "";
       $("notice").value = payload.notice || "";
-      const days = (payload.days || []).map(([title, body, images]) => {
-        const mealStart = body.indexOf("早餐：");
-        const detail = mealStart >= 0 ? body.slice(0, mealStart).trim() : body;
-        const meals = mealStart >= 0 ? body.slice(mealStart).trim().split("\n") : [];
-        return {
-          title: title.replace(/^Day\s*\d+\s*/i, ""),
-          images: Array.isArray(images) ? images : images ? [images] : [],
-          detail,
-          breakfast: cleanMeal(meals[0], "早餐："),
-          lunch: cleanMeal(meals[1], "午餐："),
-          dinner: cleanMeal(meals[2], "晚餐："),
-          hotel: cleanMeal(meals[3], "住宿：")
-        };
-      });
+      setImageStyle("hero", payload.heroStyle);
+      const days = (payload.days || []).map(normalizeDay);
       $("daysCount").value = Math.max(1, days.length || 5);
       renderDayEditors(Number($("daysCount").value), days);
       fillFlights(payload.flights || []);
+    }
+
+    function setImageStyle(prefix, style = {}) {
+      const values = {
+        X: Number(style.x ?? 50),
+        Y: Number(style.y ?? 50),
+        Zoom: Number(style.zoom ?? 100)
+      };
+      Object.entries(values).forEach(([suffix, value]) => {
+        const id = `${prefix}${suffix}`;
+        if ($(id)) {
+          $(id).value = value;
+          syncRangeValue(id);
+        }
+      });
     }
 
     function fillFlights(flights) {
