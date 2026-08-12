@@ -46,6 +46,10 @@
     .day-head h3 { margin: 0; color: #173e52; }
     .image-controls { border: 1px solid #e5ded3; border-radius: 8px; padding: 10px; background: #fffefa; }
     .image-controls h4 { margin: 0 0 8px; color: #173e52; }
+    .image-preview { border: 1px solid var(--line); border-radius: 8px; background: #eee9df; background-repeat: no-repeat; background-size: cover; background-position: center; margin-bottom: 10px; overflow: hidden; }
+    .hero-preview { aspect-ratio: 16 / 9; }
+    .day-preview { aspect-ratio: 4 / 3; }
+    .image-preview.empty { display: grid; place-items: center; color: var(--muted); font-size: 13px; background-image: none !important; }
     .range-row { display: grid; grid-template-columns: 86px 1fr 44px; gap: 8px; align-items: center; margin-top: 8px; }
     .range-row label { margin: 0; }
     input[type="range"] { padding: 0; }
@@ -114,6 +118,7 @@
         </div>
         <div class="image-controls">
           <h4>主視覺顯示調整</h4>
+          <div class="image-preview hero-preview empty" id="heroPreview">尚未選擇圖片</div>
           <div class="range-row"><label for="heroPosX">左右</label><input id="heroPosX" type="range" min="0" max="100" value="50" oninput="syncRangeValue('heroPosX')"><span id="heroPosXValue">50%</span></div>
           <div class="range-row"><label for="heroPosY">上下</label><input id="heroPosY" type="range" min="0" max="100" value="50" oninput="syncRangeValue('heroPosY')"><span id="heroPosYValue">50%</span></div>
           <div class="range-row"><label for="heroZoom">縮放</label><input id="heroZoom" type="range" min="100" max="180" value="100" oninput="syncRangeValue('heroZoom')"><span id="heroZoomValue">100%</span></div>
@@ -220,6 +225,8 @@
       const tour = savedTours.find((item) => item.id === $("tourSelect").value);
       if (tour) fillForm(tour);
     });
+    $("heroImage").addEventListener("input", () => updatePreview("heroPreview", $("heroImage").value, "hero"));
+    $("heroImageFile").addEventListener("change", () => previewSelectedFiles("heroImageFile", "heroPreview", "hero"));
 
     init();
 
@@ -304,7 +311,13 @@
           </div>
         `;
         $("daysArea").appendChild(div);
+        [0, 1, 2].forEach((n) => {
+          $(`dayImage${i}_${n}`).addEventListener("input", () => updatePreview(`dayPreview${i}_${n}`, $(`dayImage${i}_${n}`).value, `dayImageStyle${i}_${n}`));
+          updatePreview(`dayPreview${i}_${n}`, $(`dayImage${i}_${n}`).value, `dayImageStyle${i}_${n}`);
+        });
+        $(`dayImageFiles${i}`).addEventListener("change", () => previewSelectedFiles(`dayImageFiles${i}`, null, null, i));
       }
+      updatePreview("heroPreview", $("heroImage").value, "hero");
     }
 
     function imageControlHtml(dayIndex, imageIndex, style = {}) {
@@ -315,6 +328,7 @@
       return `
         <div class="image-controls">
           <h4>圖片 ${imageIndex + 1} 顯示調整</h4>
+          <div class="image-preview day-preview empty" id="dayPreview${dayIndex}_${imageIndex}">尚未選擇圖片</div>
           <div class="range-row"><label for="${prefix}X">左右</label><input id="${prefix}X" type="range" min="0" max="100" value="${x}" oninput="syncRangeValue('${prefix}X')"><span id="${prefix}XValue">${x}%</span></div>
           <div class="range-row"><label for="${prefix}Y">上下</label><input id="${prefix}Y" type="range" min="0" max="100" value="${y}" oninput="syncRangeValue('${prefix}Y')"><span id="${prefix}YValue">${y}%</span></div>
           <div class="range-row"><label for="${prefix}Zoom">縮放</label><input id="${prefix}Zoom" type="range" min="100" max="180" value="${zoom}" oninput="syncRangeValue('${prefix}Zoom')"><span id="${prefix}ZoomValue">${zoom}%</span></div>
@@ -324,6 +338,72 @@
 
     function syncRangeValue(id) {
       if ($(id) && $(`${id}Value`)) $(`${id}Value`).textContent = `${$(id).value}%`;
+      const heroMap = { heroPosX: "hero", heroPosY: "hero", heroZoom: "hero" };
+      if (heroMap[id]) updatePreview("heroPreview", $("heroImage").value, "hero");
+      const match = id.match(/^dayImageStyle(\d+)_(\d+)(X|Y|Zoom)$/);
+      if (match) {
+        const dayIndex = match[1];
+        const imageIndex = match[2];
+        updatePreview(`dayPreview${dayIndex}_${imageIndex}`, $(`dayImage${dayIndex}_${imageIndex}`).value, `dayImageStyle${dayIndex}_${imageIndex}`);
+      }
+    }
+
+    function styleForPreview(prefix) {
+      const style = prefix === "hero" ? collectHeroStyle() : collectImageStyle(prefix);
+      const size = style.zoom === 100 ? "cover" : `${style.zoom}%`;
+      return { position: `${style.x}% ${style.y}%`, size };
+    }
+
+    function collectHeroStyle() {
+      return {
+        x: Number($("heroPosX")?.value || 50),
+        y: Number($("heroPosY")?.value || 50),
+        zoom: Number($("heroZoom")?.value || 100)
+      };
+    }
+
+    function updatePreview(previewId, url, stylePrefix) {
+      const preview = $(previewId);
+      if (!preview) return;
+      const src = url || preview.dataset.localUrl || "";
+      if (!src) {
+        preview.classList.add("empty");
+        preview.textContent = "尚未選擇圖片";
+        preview.style.backgroundImage = "";
+        return;
+      }
+      const { position, size } = styleForPreview(stylePrefix);
+      preview.classList.remove("empty");
+      preview.textContent = "";
+      preview.style.backgroundImage = `url("${src.replaceAll('"', "%22")}")`;
+      preview.style.backgroundPosition = position;
+      preview.style.backgroundSize = size;
+    }
+
+    function previewSelectedFiles(inputId, previewId, stylePrefix, dayIndex = null) {
+      const files = Array.from($(inputId)?.files || []);
+      if (!files.length) return;
+      if (dayIndex === null) {
+        const url = URL.createObjectURL(files[0]);
+        const preview = $(previewId);
+        if (preview?.dataset.localUrl) URL.revokeObjectURL(preview.dataset.localUrl);
+        preview.dataset.localUrl = url;
+        updatePreview(previewId, url, stylePrefix);
+        return;
+      }
+      const slots = [0, 1, 2].filter((index) => !$(`dayImage${dayIndex}_${index}`).value.trim());
+      const targetSlots = slots.length ? slots : [0, 1, 2];
+      files.slice(0, targetSlots.length).forEach((file, fileIndex) => {
+        const index = targetSlots[fileIndex];
+        const target = $(`dayImage${dayIndex}_${index}`);
+        const preview = $(`dayPreview${dayIndex}_${index}`);
+        if (!target || !preview) return;
+        const url = URL.createObjectURL(file);
+        if (preview.dataset.localUrl) URL.revokeObjectURL(preview.dataset.localUrl);
+        preview.dataset.localUrl = url;
+        target.value = "";
+        updatePreview(`dayPreview${dayIndex}_${index}`, url, `dayImageStyle${dayIndex}_${index}`);
+      });
     }
 
     function addLibraryImage(dayIndex, category) {
@@ -462,7 +542,7 @@
         title: $("title").value.trim(),
         subtitle: $("subtitle").value.trim(),
         image: $("heroImage").value.trim(),
-        heroStyle: collectImageStyle("hero"),
+        heroStyle: collectHeroStyle(),
         info: [["天數", `${$("daysCount").value}天`], ["價格", $("price").value.trim()]],
         price: $("price").value.trim(),
         flights,
@@ -527,16 +607,18 @@
       $("daysCount").value = Math.max(1, days.length || 5);
       renderDayEditors(Number($("daysCount").value), days);
       fillFlights(payload.flights || []);
+      updatePreview("heroPreview", $("heroImage").value, "hero");
     }
 
     function setImageStyle(prefix, style = {}) {
+      const normalizedPrefix = prefix === "hero" ? "heroPos" : prefix;
       const values = {
         X: Number(style.x ?? 50),
         Y: Number(style.y ?? 50),
         Zoom: Number(style.zoom ?? 100)
       };
       Object.entries(values).forEach(([suffix, value]) => {
-        const id = `${prefix}${suffix}`;
+        const id = `${normalizedPrefix}${suffix}`;
         if ($(id)) {
           $(id).value = value;
           syncRangeValue(id);
