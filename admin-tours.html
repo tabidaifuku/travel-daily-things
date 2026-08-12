@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>旅遊大小事｜行程後台</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #f7f3ec;
+      --paper: #fffdf8;
+      --ink: #26302f;
+      --muted: #6d7470;
+      --line: #d8d0c2;
+      --green: #0f766e;
+      --green-dark: #0d5f59;
+      --blue: #376b9c;
+      --warm: #b66b2a;
+      --soft: #eef7f5;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: linear-gradient(180deg, #fdfbf6 0%, var(--bg) 58%, #edf4f1 100%); font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif; }
+    button, input, textarea, select { font: inherit; }
+    button { border: 0; cursor: pointer; border-radius: 6px; min-height: 40px; padding: 0 14px; font-weight: 800; }
+    input, textarea, select { width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 10px; background: #fffefa; color: var(--ink); }
+    textarea { min-height: 130px; resize: vertical; line-height: 1.65; }
+    label { display: block; margin-bottom: 6px; color: #46514e; font-size: 13px; font-weight: 800; }
+    h1, h2, h3, p { margin-top: 0; }
+    .wrap { width: min(1120px, calc(100% - 28px)); margin: 0 auto; padding: 24px 0 42px; }
+    .top { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 18px; }
+    .top h1 { margin-bottom: 4px; font-size: clamp(28px, 5vw, 46px); }
+    .muted { color: var(--muted); line-height: 1.7; }
+    .panel { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 18px; box-shadow: 0 12px 34px rgba(38, 31, 22, .08); margin-bottom: 14px; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .field { margin-bottom: 12px; }
+    .primary { background: var(--green); color: white; box-shadow: 0 10px 20px rgba(15, 118, 110, .2); }
+    .secondary { background: #eee9df; color: #313c39; border: 1px solid var(--line); }
+    .ghost { background: transparent; color: var(--green-dark); border: 1px solid #bdd8d4; }
+    .danger { background: #f9e3df; color: #9b3428; border: 1px solid #efc4bd; }
+    .hidden { display: none !important; }
+    .message { min-height: 24px; color: var(--green-dark); font-weight: 800; }
+    .day-card { border: 1px solid #c9d9d6; background: #fffefa; border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+    .day-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 12px; }
+    .day-head h3 { margin: 0; color: #173e52; }
+    .library { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 10px; }
+    .library button { min-height: 32px; padding: 0 10px; background: var(--soft); color: var(--green-dark); border: 1px solid #cde4e0; font-size: 13px; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .login-box { max-width: 460px; margin: 54px auto; }
+
+    @media (max-width: 780px) {
+      .top, .grid, .grid-3 { grid-template-columns: 1fr; display: grid; }
+      .top { align-items: start; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="top">
+      <div>
+        <h1>行程後台</h1>
+        <p class="muted">填好資料後儲存，前台會用目前的行程小本本版型顯示。</p>
+      </div>
+      <div class="toolbar">
+        <a href="index.html"><button class="ghost" type="button">看前台</button></a>
+        <button class="secondary hidden" id="logoutBtn" type="button">登出</button>
+      </div>
+    </section>
+
+    <section class="panel login-box" id="loginPanel">
+      <h2>管理者登入</h2>
+      <div class="field"><label for="loginEmail">e-mail</label><input id="loginEmail" type="email" autocomplete="username"></div>
+      <div class="field"><label for="loginPassword">密碼</label><input id="loginPassword" type="password" autocomplete="current-password"></div>
+      <button class="primary" id="loginBtn" type="button">登入</button>
+      <p class="message" id="loginMessage"></p>
+    </section>
+
+    <section id="adminPanel" class="hidden">
+      <div class="panel">
+        <div class="toolbar">
+          <button class="secondary" type="button" id="newTourBtn">新增空白行程</button>
+          <button class="ghost" type="button" id="loadToursBtn">重新讀取</button>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <label for="tourSelect">已儲存行程</label>
+          <select id="tourSelect"></select>
+        </div>
+      </div>
+
+      <form class="panel" id="tourForm">
+        <h2>行程基本資料</h2>
+        <div class="grid">
+          <div class="field"><label for="title">大標題</label><input id="title" required></div>
+          <div class="field"><label for="subtitle">副標題</label><input id="subtitle"></div>
+        </div>
+        <div class="grid">
+          <div class="field"><label for="price">售價</label><input id="price" placeholder="NT$ 49,800 起"></div>
+          <div class="field"><label for="daysCount">旅遊天數</label><select id="daysCount"></select></div>
+        </div>
+        <div class="field"><label for="heroImage">主視覺照片網址</label><input id="heroImage"></div>
+        <div class="field"><label for="notice">注意事項</label><textarea id="notice"></textarea></div>
+
+        <h2>航班資訊</h2>
+        <div class="grid">
+          <div>
+            <h3>去程</h3>
+            <div class="grid">
+              <div class="field"><label for="outAirline">航空公司</label><input id="outAirline" value="星宇航空"></div>
+              <div class="field"><label for="outFlightNo">班機</label><input id="outFlightNo" value="JX862"></div>
+            </div>
+            <div class="field"><label for="outDate">日期欄位</label><input id="outDate" value="出發日期"></div>
+            <div class="grid">
+              <div class="field"><label for="outDepartPlace">出發機場</label><input id="outDepartPlace" value="桃園國際機場"></div>
+              <div class="field"><label for="outDepartTime">出發時間</label><input id="outDepartTime" value="11:50"></div>
+            </div>
+            <div class="grid">
+              <div class="field"><label for="outArrivePlace">抵達機場</label><input id="outArrivePlace" value="仙台機場"></div>
+              <div class="field"><label for="outArriveTime">抵達時間</label><input id="outArriveTime" value="16:00"></div>
+            </div>
+          </div>
+          <div>
+            <h3>回程</h3>
+            <div class="grid">
+              <div class="field"><label for="backAirline">航空公司</label><input id="backAirline" value="星宇航空"></div>
+              <div class="field"><label for="backFlightNo">班機</label><input id="backFlightNo" value="JX863"></div>
+            </div>
+            <div class="field"><label for="backDate">日期欄位</label><input id="backDate" value="回程日期"></div>
+            <div class="grid">
+              <div class="field"><label for="backDepartPlace">出發機場</label><input id="backDepartPlace" value="仙台機場"></div>
+              <div class="field"><label for="backDepartTime">出發時間</label><input id="backDepartTime" value="17:25"></div>
+            </div>
+            <div class="grid">
+              <div class="field"><label for="backArrivePlace">抵達機場</label><input id="backArrivePlace" value="桃園國際機場"></div>
+              <div class="field"><label for="backArriveTime">抵達時間</label><input id="backArriveTime" value="20:35"></div>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <section class="panel">
+        <h2>每天行程</h2>
+        <div id="daysArea"></div>
+      </section>
+
+      <section class="panel">
+        <div class="toolbar">
+          <button class="primary" type="button" id="saveBtn">儲存行程</button>
+          <button class="danger" type="button" id="deleteBtn">刪除這筆</button>
+        </div>
+        <p class="message" id="saveMessage"></p>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const supabaseUrl = "https://awlrmtyynguetdsxswgc.supabase.co";
+    const supabaseKey = "sb_publishable_-3c0c7c4grzS7_OaNfRALw_Xv31hjIT";
+    const client = supabase.createClient(supabaseUrl, supabaseKey);
+    const $ = (id) => document.getElementById(id);
+    let currentId = null;
+    let savedTours = [];
+
+    const imageLibrary = {
+      "藏王樹冰": [
+        "https://prd-static.gltjp.com/glt/data/directory/14000/13656/20220912_164052_ea0c870a_w1920.jpg"
+      ],
+      "仙台朝市": [
+        "https://cdn.4travel.jp/img/thumbnails/imk/travelogue_pict/73/41/96/650x_73419664.jpg?updated_at=1654051145"
+      ],
+      "銀山溫泉": [
+        "https://rimage.gnst.jp/livejapan.com/public/article/detail/a/30/00/a3000253/img/en/a3000253_parts_63d0cb8191b6b.jpg?20231121095000=&q=80"
+      ],
+      "天童溫泉": [
+        "https://images.trvl-media.com/lodging/17000000/16350000/16341600/16341512/6c74c406.jpg?impolicy=resizecrop&ra=fill&rh=575&rw=575"
+      ],
+      "城市／機場": [
+        "https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=900&q=80"
+      ]
+    };
+
+    for (let i = 1; i <= 10; i += 1) {
+      const option = document.createElement("option");
+      option.value = i;
+      option.textContent = `${i} 天`;
+      if (i === 5) option.selected = true;
+      $("daysCount").appendChild(option);
+    }
+
+    $("loginBtn").addEventListener("click", login);
+    $("loginPassword").addEventListener("keydown", (event) => { if (event.key === "Enter") login(); });
+    $("logoutBtn").addEventListener("click", async () => { await client.auth.signOut(); location.reload(); });
+    $("daysCount").addEventListener("change", () => renderDayEditors(Number($("daysCount").value)));
+    $("saveBtn").addEventListener("click", saveTour);
+    $("loadToursBtn").addEventListener("click", loadTours);
+    $("newTourBtn").addEventListener("click", newTour);
+    $("deleteBtn").addEventListener("click", deleteTour);
+    $("tourSelect").addEventListener("change", () => {
+      const tour = savedTours.find((item) => item.id === $("tourSelect").value);
+      if (tour) fillForm(tour);
+    });
+
+    init();
+
+    async function init() {
+      renderDayEditors(5);
+      fillDemo();
+      const { data } = await client.auth.getSession();
+      if (data.session) showAdmin();
+    }
+
+    async function login() {
+      $("loginMessage").textContent = "登入中...";
+      const { error } = await client.auth.signInWithPassword({
+        email: $("loginEmail").value.trim(),
+        password: $("loginPassword").value
+      });
+      if (error) {
+        $("loginMessage").textContent = "登入失敗，請確認帳號密碼。";
+        return;
+      }
+      showAdmin();
+    }
+
+    async function showAdmin() {
+      $("loginPanel").classList.add("hidden");
+      $("adminPanel").classList.remove("hidden");
+      $("logoutBtn").classList.remove("hidden");
+      await loadTours();
+    }
+
+    async function loadTours() {
+      const { data, error } = await client.from("site_tours").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false });
+      if (error) {
+        $("saveMessage").textContent = "讀取失敗。請確認資料表 SQL 已經執行。";
+        return;
+      }
+      savedTours = data || [];
+      $("tourSelect").innerHTML = savedTours.map((tour) => `<option value="${tour.id}">${tour.title}</option>`).join("");
+      if (savedTours[0]) fillForm(savedTours[0]);
+    }
+
+    function newTour() {
+      currentId = null;
+      $("tourForm").reset();
+      $("daysCount").value = 5;
+      renderDayEditors(5);
+      fillDemo();
+      $("saveMessage").textContent = "已建立空白編輯畫面，填好後按儲存。";
+    }
+
+    function renderDayEditors(count, days = []) {
+      $("daysArea").innerHTML = "";
+      for (let i = 0; i < count; i += 1) {
+        const day = days[i] || {};
+        const div = document.createElement("div");
+        div.className = "day-card";
+        div.innerHTML = `
+          <div class="day-head"><h3>Day ${i + 1}</h3></div>
+          <div class="field"><label>當天行程標題</label><input id="dayTitle${i}" value="${escapeAttr(day.title || "")}"></div>
+          <div class="grid-3">
+            ${[0, 1, 2].map((n) => `<div class="field"><label>圖片 ${n + 1}</label><input id="dayImage${i}_${n}" value="${escapeAttr((day.images || [])[n] || "")}"></div>`).join("")}
+          </div>
+          <div class="library">
+            ${Object.keys(imageLibrary).map((name) => `<button type="button" onclick="addLibraryImage(${i}, '${name}')">${name}</button>`).join("")}
+          </div>
+          <div class="field"><label>展開行程內容</label><textarea id="dayDetail${i}">${escapeText(day.detail || "")}</textarea></div>
+          <div class="grid">
+            <div class="field"><label>早餐</label><input id="dayBreakfast${i}" value="${escapeAttr(day.breakfast || "")}"></div>
+            <div class="field"><label>午餐</label><input id="dayLunch${i}" value="${escapeAttr(day.lunch || "")}"></div>
+            <div class="field"><label>晚餐</label><input id="dayDinner${i}" value="${escapeAttr(day.dinner || "")}"></div>
+            <div class="field"><label>住宿</label><input id="dayHotel${i}" value="${escapeAttr(day.hotel || "")}"></div>
+          </div>
+        `;
+        $("daysArea").appendChild(div);
+      }
+    }
+
+    function addLibraryImage(dayIndex, category) {
+      const urls = imageLibrary[category] || [];
+      const url = urls[0] || "";
+      for (let i = 0; i < 3; i += 1) {
+        const input = $(`dayImage${dayIndex}_${i}`);
+        if (input && !input.value) {
+          input.value = url;
+          return;
+        }
+      }
+      $(`dayImage${dayIndex}_0`).value = url;
+    }
+
+    async function saveTour() {
+      $("saveMessage").textContent = "儲存中...";
+      const payload = collectPayload();
+      const row = {
+        slug: slugify(payload.title),
+        title: payload.title,
+        subtitle: payload.subtitle,
+        price: payload.price,
+        hero_image: payload.image,
+        is_published: true,
+        sort_order: 10,
+        payload
+      };
+      let result;
+      if (currentId) {
+        result = await client.from("site_tours").update(row).eq("id", currentId).select().single();
+      } else {
+        result = await client.from("site_tours").insert(row).select().single();
+      }
+      if (result.error) {
+        $("saveMessage").textContent = `儲存失敗：${result.error.message}`;
+        return;
+      }
+      currentId = result.data.id;
+      $("saveMessage").textContent = "已儲存，可以到前台重新整理看看。";
+      await loadTours();
+    }
+
+    async function deleteTour() {
+      if (!currentId || !confirm("確定要刪除這筆行程嗎？")) return;
+      const { error } = await client.from("site_tours").delete().eq("id", currentId);
+      if (error) {
+        $("saveMessage").textContent = `刪除失敗：${error.message}`;
+        return;
+      }
+      currentId = null;
+      $("saveMessage").textContent = "已刪除。";
+      await loadTours();
+      newTour();
+    }
+
+    function collectPayload() {
+      const days = [];
+      for (let i = 0; i < Number($("daysCount").value); i += 1) {
+        const title = `Day ${i + 1}  ${$(`dayTitle${i}`).value.trim()}`;
+        const detail = $(`dayDetail${i}`).value.trim();
+        const body = `${detail}\n\n早餐：${$(`dayBreakfast${i}`).value.trim()}\n午餐：${$(`dayLunch${i}`).value.trim()}\n晚餐：${$(`dayDinner${i}`).value.trim()}\n住宿：${$(`dayHotel${i}`).value.trim()}`;
+        const images = [0, 1, 2].map((n) => $(`dayImage${i}_${n}`).value.trim()).filter(Boolean);
+        days.push([title, body, images]);
+      }
+      const flights = [
+        collectFlight("去程", "out"),
+        collectFlight("回程", "back")
+      ];
+      return {
+        title: $("title").value.trim(),
+        subtitle: $("subtitle").value.trim(),
+        image: $("heroImage").value.trim(),
+        info: [["天數", `${$("daysCount").value}天`], ["價格", $("price").value.trim()]],
+        price: $("price").value.trim(),
+        flights,
+        highlights: [],
+        gallery: days.flatMap((day) => day[2]).filter(Boolean),
+        notice: $("notice").value.trim(),
+        days
+      };
+    }
+
+    function collectFlight(type, prefix) {
+      return {
+        type,
+        airline: $(`${prefix}Airline`).value.trim(),
+        flightNo: $(`${prefix}FlightNo`).value.trim(),
+        date: $(`${prefix}Date`).value.trim(),
+        departTime: $(`${prefix}DepartTime`).value.trim(),
+        departPlace: $(`${prefix}DepartPlace`).value.trim(),
+        arriveTime: $(`${prefix}ArriveTime`).value.trim(),
+        arrivePlace: $(`${prefix}ArrivePlace`).value.trim()
+      };
+    }
+
+    function fillForm(row) {
+      currentId = row.id;
+      const payload = row.payload || {};
+      $("title").value = payload.title || row.title || "";
+      $("subtitle").value = payload.subtitle || row.subtitle || "";
+      $("price").value = payload.price || row.price || "";
+      $("heroImage").value = payload.image || row.hero_image || "";
+      $("notice").value = payload.notice || "";
+      const days = (payload.days || []).map(([title, body, images]) => {
+        const mealStart = body.indexOf("早餐：");
+        const detail = mealStart >= 0 ? body.slice(0, mealStart).trim() : body;
+        const meals = mealStart >= 0 ? body.slice(mealStart).trim().split("\n") : [];
+        return {
+          title: title.replace(/^Day\s*\d+\s*/i, ""),
+          images: Array.isArray(images) ? images : images ? [images] : [],
+          detail,
+          breakfast: cleanMeal(meals[0], "早餐："),
+          lunch: cleanMeal(meals[1], "午餐："),
+          dinner: cleanMeal(meals[2], "晚餐："),
+          hotel: cleanMeal(meals[3], "住宿：")
+        };
+      });
+      $("daysCount").value = Math.max(1, days.length || 5);
+      renderDayEditors(Number($("daysCount").value), days);
+      fillFlights(payload.flights || []);
+    }
+
+    function fillFlights(flights) {
+      const out = flights[0] || {};
+      const back = flights[1] || {};
+      setFlight("out", out);
+      setFlight("back", back);
+    }
+
+    function setFlight(prefix, flight) {
+      $(`${prefix}Airline`).value = flight.airline || "星宇航空";
+      $(`${prefix}FlightNo`).value = flight.flightNo || "";
+      $(`${prefix}Date`).value = flight.date || (prefix === "out" ? "出發日期" : "回程日期");
+      $(`${prefix}DepartPlace`).value = flight.departPlace || "";
+      $(`${prefix}DepartTime`).value = flight.departTime || "";
+      $(`${prefix}ArrivePlace`).value = flight.arrivePlace || "";
+      $(`${prefix}ArriveTime`).value = flight.arriveTime || "";
+    }
+
+    function fillDemo() {
+      $("title").value = "東北五日｜藏王樹冰・銀山溫泉・松島海岸";
+      $("subtitle").value = "冬季限定｜5日｜參考價 NT$ 49,800 起";
+      $("price").value = "NT$ 49,800 起";
+      $("heroImage").value = "https://prd-static.gltjp.com/glt/data/directory/14000/13656/20220912_164052_ea0c870a_w1920.jpg";
+      $("notice").value = "冬季景點會受天候、道路、纜車運行狀況影響；正式內容以實際確認後安排為準。";
+    }
+
+    function cleanMeal(value, label) {
+      return (value || "").replace(label, "").trim();
+    }
+
+    function slugify(text) {
+      return text.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^\u4e00-\u9fa5a-z0-9-]/g, "").slice(0, 80) || `tour-${Date.now()}`;
+    }
+
+    function escapeAttr(value) {
+      return String(value).replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
+    }
+
+    function escapeText(value) {
+      return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;");
+    }
+  </script>
+</body>
+</html>
