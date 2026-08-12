@@ -6,652 +6,441 @@
   <title>旅遊大小事</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    :root { --bg:#f6f3ed; --panel:#fffdf8; --ink:#25302f; --muted:#6b7471; --line:#d8d0c2; --main:#0f766e; --danger:#b42318; }
-    * { box-sizing:border-box; }
-    body { margin:0; background:var(--bg); color:var(--ink); font-family:"Microsoft JhengHei","Noto Sans TC",system-ui,sans-serif; }
-    button,input,textarea,select { font:inherit; }
-    button { border:0; border-radius:6px; min-height:40px; padding:0 14px; cursor:pointer; font-weight:700; }
-    input,textarea,select { width:100%; border:1px solid var(--line); border-radius:6px; padding:10px; background:#fffefa; }
-    textarea { min-height:110px; resize:vertical; line-height:1.6; }
-    label { display:block; margin:0 0 6px; color:#45514e; font-size:13px; font-weight:700; }
-    h1,h2,h3,p { margin-top:0; }
-    .app { width:min(1180px,calc(100% - 28px)); margin:0 auto; padding:28px 0 48px; }
-    .top { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:18px; }
-    .top h1 { font-size:clamp(28px,4vw,44px); margin-bottom:8px; }
-    .muted { color:var(--muted); line-height:1.7; }
-    .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:18px; box-shadow:0 16px 44px rgba(42,35,25,.1); }
-    .grid { display:grid; grid-template-columns:380px 1fr; gap:18px; align-items:start; }
-    .two { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-    .field { margin-bottom:12px; }
-    .primary { background:var(--main); color:white; }
-    .secondary { background:#eeeae1; color:#303b38; border:1px solid var(--line); }
-    .danger { background:#fff0ed; color:var(--danger); border:1px solid #efb6ac; }
-    .ghost { background:transparent; color:#0e625c; border:1px solid #b9d7d3; }
-    .actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    .hidden { display:none !important; }
-    .tabs { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
-    .type-switch { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
-    .type-switch button.active { background:var(--main); color:white; }
-    .card-list { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
-    .card { border:1px solid var(--line); border-radius:8px; background:#fffefa; padding:13px; display:grid; gap:8px; }
-    .card.cancelled { background:#eeeeee; border-color:#cfcfcf; color:#686868; }
-    .card.cancelled .link-button { color:#686868; }
-    .card.cancelled .badge { background:#dedede; color:#666; }
-    .card.completed { background:#f5f5f5; border-color:#d6d6d6; color:#777; }
-    .card.completed .link-button { color:#777; }
-    .card.completed .badge { background:#cfcfcf; color:#555; }
-    .card.final-waiting { background:#fff7e6; border-color:#d97706; }
-    .card.final-waiting .link-button { color:#92400e; }
-    .card.final-waiting .badge { background:#d97706; color:white; }
-    .card.new-waiting { background:#eaf6f4; border-color:#0f766e; }
-    .card.new-waiting .link-button { color:#0f5f59; }
-    .card.new-waiting .badge { background:#0f766e; color:white; }
-    .card.customer-waiting { background:#eaf6f4; border-color:#0f766e; }
-    .card.customer-waiting .link-button { color:#0f5f59; }
-    .card.customer-waiting .badge { background:#0f766e; color:white; }
-    .card.reservation-ok { background:#eaf3ff; border-color:#4d8fd8; }
-    .card.reservation-ok .link-button { color:#225f9f; }
-    .card.reservation-ok .badge { background:#4d8fd8; color:white; }
-    .card-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
-    .link-button { background:transparent; padding:0; min-height:auto; color:#0f5f59; text-align:left; text-decoration:underline; text-underline-offset:3px; font-size:18px; }
-    .meta { display:flex; flex-wrap:wrap; gap:8px 12px; color:var(--muted); font-size:13px; line-height:1.6; }
-    .badge { display:inline-flex; align-items:center; min-height:26px; border-radius:999px; padding:0 9px; background:#e8f4f2; color:#0f5f59; font-size:13px; font-weight:700; white-space:nowrap; }
-    .modal-bg { position:fixed; inset:0; background:rgba(25,33,31,.45); display:none; align-items:center; justify-content:center; padding:18px; z-index:10; }
-    .modal-bg.open { display:flex; }
-    .modal { width:min(900px,100%); max-height:92vh; overflow:auto; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
-    .modal-head { position:sticky; top:0; background:#faf7ef; border-bottom:1px solid var(--line); padding:14px 16px; display:flex; justify-content:space-between; gap:12px; }
-    .modal-actions { display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap; justify-content:flex-end; }
-    .modal-body { padding:16px; display:grid; gap:14px; }
-    .site-footer { margin-top:22px; padding:16px 0 0; color:var(--muted); font-size:12px; text-align:center; line-height:1.7; }
-    .detail-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-    .detail { border:1px solid #ece6da; border-radius:6px; padding:10px; background:#fffefa; }
-    .detail span { display:block; color:var(--muted); font-size:12px; margin-bottom:4px; }
-    .note { border-left:3px solid var(--main); background:white; border-radius:6px; padding:9px 10px; line-height:1.6; }
-    .note time { display:block; color:var(--muted); font-size:12px; margin-bottom:4px; }
-    .pre-line { white-space:pre-wrap; word-break:break-word; }
-    .final-box { border:2px solid #d97706; background:#fff7e6; border-radius:8px; padding:14px; }
-    .final-box h3 { color:#92400e; margin-bottom:10px; }
-    .final-box .note { border-left-color:#d97706; background:#fffdf7; }
-    .final-button { background:#d97706; color:white; border:1px solid #b45309; }
-    .final-note { border-left-color:#d97706; background:#fff7e6; }
-    .cancel-button { background:#c65f5f; color:white; border:1px solid #ad4d4d; }
-    .cancel-box { border:2px solid #d98b8b; background:#fff0f0; border-radius:8px; padding:14px; }
-    .cancel-box h3 { color:#9f3f3f; margin-bottom:10px; }
-    .cancel-note { border-left-color:#c65f5f; background:#fff0f0; }
-    .hint { color:var(--muted); font-size:12px; line-height:1.6; margin-top:6px; }
-    .image-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
-    .image-thumb { display:block; width:100%; aspect-ratio:4/3; object-fit:cover; border:1px solid var(--line); border-radius:6px; background:#eeeae1; }
-    .upload-status { color:#0f5f59; font-size:13px; line-height:1.6; margin-top:6px; }
-    @media (max-width:900px) { .grid,.two,.detail-grid { grid-template-columns:1fr; } .top { display:grid; } }
+    :root {
+      --bg: #f7f3ec;
+      --paper: #fffdf8;
+      --ink: #26302f;
+      --muted: #6d7470;
+      --line: #d8d0c2;
+      --green: #0f766e;
+      --green-dark: #0d5f59;
+      --blue: #376b9c;
+      --warm: #b66b2a;
+      --soft: #eef7f5;
+      --shadow: 0 18px 52px rgba(38, 31, 22, .12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: linear-gradient(180deg, #fdfbf6 0%, var(--bg) 54%, #edf4f1 100%);
+      font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+    }
+
+    button, input, textarea, select { font: inherit; }
+    button { border: 0; cursor: pointer; border-radius: 6px; min-height: 42px; padding: 0 16px; font-weight: 700; }
+    input, textarea, select { width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 11px; background: #fffefa; color: var(--ink); }
+    textarea { min-height: 118px; resize: vertical; line-height: 1.65; }
+    label { display: block; margin-bottom: 6px; color: #46514e; font-size: 13px; font-weight: 700; }
+    h1, h2, h3, p { margin-top: 0; }
+
+    .wrap { width: min(1120px, calc(100% - 30px)); margin: 0 auto; padding: 26px 0 44px; }
+    .hero { min-height: 76vh; display: grid; grid-template-columns: 1.05fr .95fr; gap: 28px; align-items: center; }
+    .eyebrow { color: var(--warm); font-weight: 800; letter-spacing: 0; margin-bottom: 12px; }
+    h1 { font-size: clamp(38px, 7vw, 76px); line-height: 1; margin-bottom: 18px; letter-spacing: 0; }
+    .lead { color: var(--muted); line-height: 1.9; font-size: 18px; max-width: 680px; }
+    .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
+    .primary { background: var(--green); color: white; box-shadow: 0 12px 24px rgba(15, 118, 110, .23); }
+    .secondary { background: #eee9df; color: #313c39; border: 1px solid var(--line); }
+    .ghost { background: transparent; border: 1px solid #bdd8d4; color: var(--green-dark); }
+
+    .photo {
+      min-height: 430px;
+      border-radius: 8px;
+      background:
+        linear-gradient(160deg, rgba(15, 55, 68, .28), rgba(247, 243, 236, .12)),
+        url("https://prd-static.gltjp.com/glt/data/directory/14000/13656/20220912_164052_ea0c870a_w1920.jpg");
+      background-size: cover;
+      background-position: center;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, .68);
+    }
+
+    .section-head { display: flex; justify-content: space-between; gap: 18px; align-items: end; margin: 26px 0 14px; }
+    .section-head h2 { font-size: clamp(26px, 4vw, 40px); margin-bottom: 6px; }
+    .muted { color: var(--muted); line-height: 1.7; }
+
+    .tour-grid { display: grid; grid-template-columns: minmax(0, 420px); gap: 14px; }
+    .tour-card, .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 12px 34px rgba(38, 31, 22, .08);
+    }
+    .tour-card { overflow: hidden; display: grid; }
+    .tour-image { min-height: 180px; background-size: cover; background-position: center; }
+    .tour-body { padding: 16px; display: grid; gap: 12px; }
+    .tour-title { font-size: 20px; font-weight: 900; margin: 0; }
+    .tags { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tag { display: inline-flex; align-items: center; min-height: 26px; padding: 0 9px; border-radius: 999px; background: var(--soft); color: var(--green-dark); font-size: 13px; font-weight: 700; }
+    .price { font-size: 22px; font-weight: 900; color: var(--blue); }
+    .small { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+    .panel { padding: 18px; }
+    .days { display: grid; gap: 24px; }
+    .day { border-bottom: 1px solid #e4ded2; padding: 0 0 22px; line-height: 1.75; }
+    .day:last-child { border-bottom: 0; }
+    .day-content { min-width: 0; }
+    .day-title { display: block; margin-bottom: 12px; font-size: 18px; font-weight: 900; color: #173e52; }
+    .day-title span { color: var(--green-dark); margin-right: 6px; }
+    .day-collage { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .day-photo { border-radius: 8px; background-size: cover; background-position: center; border: 1px solid var(--line); min-height: 0; }
+    .day-photo { aspect-ratio: 4 / 3; }
+    .day-summary { background: #f8f5ed; border-radius: 6px; padding: 12px; color: #3d4744; }
+    .meal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 15px; line-height: 1.55; }
+    .meal-chip { border: 1px solid var(--line); border-radius: 6px; background: #fffefa; padding: 9px 10px; font-weight: 700; }
+    .meal-chip:nth-child(4) { grid-column: 1 / -1; }
+    .detail-toggle { display: flex; justify-content: flex-end; margin-top: 8px; }
+    .detail-toggle button { min-height: 34px; padding: 0 4px; background: transparent; color: var(--green); font-size: 13px; box-shadow: none; }
+    .day-detail { display: none; margin-top: 10px; border-left: 3px solid var(--green); background: #fffefa; padding: 12px; border-radius: 6px; white-space: pre-wrap; }
+    .day-detail.open { display: block; }
+    .field { margin-bottom: 12px; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .notice { border: 1px solid #e6cf9b; background: #fff8e8; border-radius: 8px; padding: 12px; line-height: 1.7; color: #65420a; }
+    .message { min-height: 22px; color: var(--green-dark); font-weight: 700; }
+    .modal-bg { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; padding: 18px; background: rgba(23, 31, 30, .46); }
+    .modal-bg.open { display: flex; }
+    .modal { width: min(980px, 100%); max-height: 92vh; overflow: auto; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 70px rgba(23, 31, 30, .28); }
+    .modal-head { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; gap: 14px; align-items: start; padding: 16px 18px; background: #faf7ef; border-bottom: 1px solid var(--line); }
+    .modal-body { padding: 18px; display: grid; gap: 16px; align-items: start; }
+    .tour-hero-photo { min-height: 320px; border-radius: 8px; background-size: cover; background-position: center; border: 1px solid var(--line); margin-bottom: 14px; }
+    .info-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+    .info-item { background: #f8f5ed; border: 1px solid #e7decd; border-radius: 6px; padding: 10px; }
+    .info-item span { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+    .flight-box { border: 1px solid #cde4e0; background: #fbfdfa; border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+    .flight-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; padding: 14px 16px; border-bottom: 1px solid #d7e7e4; }
+    .flight-head h3 { margin: 0; font-size: 20px; color: #173e52; }
+    .flight-note { color: var(--warm); font-size: 13px; font-weight: 700; }
+    .flight-table { padding: 12px; }
+    .flight-row { display: grid; grid-template-columns: 86px 1.1fr 1fr 1fr 54px 1fr; gap: 10px; align-items: center; background: #f5faf8; border-bottom: 1px solid #d7e7e4; padding: 12px; line-height: 1.55; }
+    .flight-row:first-child { border-radius: 8px 8px 0 0; }
+    .flight-row:last-child { border-bottom: 0; border-radius: 0 0 8px 8px; }
+    .flight-type { display: grid; place-items: center; align-self: stretch; background: #e8f3f1; color: var(--green-dark); font-weight: 900; border-radius: 6px; }
+    .flight-airline strong { display: block; color: #173e52; }
+    .flight-airline span, .flight-date, .flight-place { color: var(--muted); }
+    .flight-time { font-size: 20px; font-weight: 900; color: var(--ink); }
+    .flight-arrow { height: 1px; background: #aebdb9; position: relative; }
+    .flight-arrow::after { content: ""; position: absolute; right: -1px; top: -4px; border-left: 9px solid #aebdb9; border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+    .highlights { display: grid; gap: 8px; margin-bottom: 14px; }
+    .highlight { background: var(--soft); border: 1px solid #cde4e0; border-radius: 6px; padding: 10px; line-height: 1.65; color: var(--green-dark); font-weight: 700; }
+    .lead-panel { max-width: 680px; margin: 18px auto 0; }
+
+    .site-footer { margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line); text-align: center; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 920px) {
+      .hero, .tour-grid, .info-strip { grid-template-columns: 1fr; }
+      .photo { min-height: 300px; }
+      .tour-hero-photo { min-height: 250px; }
+      .day-collage { grid-template-columns: 1fr 1fr; }
+      .meal-grid { grid-template-columns: repeat(2, 1fr); }
+      .meal-chip:nth-child(4) { grid-column: 1 / -1; }
+      .flight-row { grid-template-columns: 1fr; }
+      .flight-type { place-items: start; padding: 7px 9px; }
+      .flight-arrow { display: none; }
+    }
+
+    @media (max-width: 560px) {
+      .wrap { width: min(100% - 20px, 1120px); padding-top: 18px; }
+      .two, .section-head { display: grid; grid-template-columns: 1fr; }
+      .hero { min-height: auto; padding-bottom: 12px; }
+      .day-collage { grid-template-columns: 1fr; }
+      .meal-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
-  <main class="app">
-    <header class="top">
+  <main class="wrap">
+    <section class="hero">
       <div>
-        <h1>旅遊大小事</h1>
-        <p class="muted">訂房、訂車、訂餐、 and anything... 問我。</p>
+        <p class="eyebrow">旅遊大小事</p>
+        <h1>想去日本玩，先丟給我。</h1>
+        <p class="lead">訂房、訂車、訂餐、 and anything... 問我。這裡會放一些可以詢問或報名的行程，喜歡哪個就填資料，後續會再由我們聯繫確認。</p>
+        <div class="hero-actions">
+          <button class="primary" type="button" onclick="scrollToTours()">看看行程</button>
+          <button class="secondary" type="button" onclick="selectTour('東北五日｜藏王樹冰・銀山溫泉・松島海岸')">直接詢問</button>
+        </div>
       </div>
-      <div class="actions">
-        <span class="badge hidden" id="userBadge"></span>
-        <button class="secondary hidden" id="signOutBtn" type="button">登出</button>
-      </div>
-    </header>
-
-    <section class="panel" id="authPanel">
-      <h2>登入</h2>
-      <div class="two">
-        <div class="field"><label for="authEmail">e-mail</label><input id="authEmail" type="email" autocomplete="off"></div>
-        <div class="field"><label for="authPassword">密碼</label><input id="authPassword" type="password" autocomplete="off"></div>
-      </div>
-      <div class="actions">
-        <button class="primary" id="loginBtn" type="button">登入</button>
-      </div>
-      <p class="muted" id="authMessage"></p>
+      <div class="photo" aria-label="冬季旅遊印象圖"></div>
     </section>
 
-    <section class="grid hidden" id="mainPanel">
-      <form class="panel" id="bookingForm">
-        <h2>新增訂單</h2>
-        <input id="bookingType" type="hidden" value="general">
-        <div class="two">
-          <div class="field"><label for="departureDate">出發日期</label><input id="departureDate" type="date" required></div>
-          <div class="field"><label for="returnDate">結束日期</label><input id="returnDate" type="date" required></div>
+    <section id="tours">
+      <div class="section-head">
+        <div>
+          <h2>行程小本本</h2>
+          <p class="muted">先放幾個適合詢問的範例，價格為參考起價，實際安排會依日期、人數、飯店與機位調整。</p>
         </div>
-        <div class="two">
-          <div class="field"><label for="groupName">團體名稱</label><input id="groupName" type="text" required></div>
-          <div class="field"><label for="peopleCount">人數</label><input id="peopleCount" type="number" min="0"></div>
-        </div>
-        <div class="field"><label for="guideName">預約者姓名</label><input id="guideName" type="text"></div>
-        <div class="field"><label for="itinerary">預約內容</label><textarea id="itinerary" required></textarea></div>
-        <div class="field">
-          <label for="imageFiles">行程圖片</label>
-          <input id="imageFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple>
-          <div class="hint">可一次選多張 JPG / PNG / WebP，每張 5MB 以內。</div>
-          <div class="upload-status" id="imageUploadMessage"></div>
-        </div>
-        <button class="primary" type="submit">送出</button>
-        <p class="muted" id="formMessage"></p>
-      </form>
-
-      <section class="panel">
-        <div class="tabs">
-          <input id="searchInput" type="search" placeholder="搜尋團體名稱、預約者姓名、預約內容">
-          <button class="secondary hidden" id="adminRefreshBtn" type="button">重新整理</button>
-        </div>
-        <ul class="card-list" id="bookingList"></ul>
-      </section>
+      </div>
+      <div class="tour-grid" id="tourGrid">
+        <article class="tour-card">
+          <div class="tour-image" style="background-image:url('https://prd-static.gltjp.com/glt/data/directory/14000/13656/20220912_164052_ea0c870a_w1920.jpg')"></div>
+          <div class="tour-body">
+            <h3 class="tour-title">東北五日｜藏王樹冰・銀山溫泉・松島海岸</h3>
+            <div class="tags"><span class="tag">冬季限定</span><span class="tag">5日</span><span class="tag">可客製</span></div>
+            <p class="muted">適合第一次想看雪景、溫泉街與東北經典景點的旅人。</p>
+            <div class="price">NT$ 49,800 起</div>
+            <p class="small">參考價，實際報價依出發日、房型、航班與人數確認。</p>
+            <button class="primary" type="button" onclick="selectTour('東北五日｜藏王樹冰・銀山溫泉・松島海岸')">我要詢問</button>
+          </div>
+        </article>
+      </div>
     </section>
+
     <footer class="site-footer">
       <div>旅遊大小事｜created in 2026</div>
       <div>managed by natuho</div>
     </footer>
   </main>
 
-  <div class="modal-bg" id="detailModal">
-    <section class="modal">
+  <div class="modal-bg" id="tourModal" aria-hidden="true">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <div class="modal-head">
-        <div><h2 id="modalTitle">團體資料</h2><div class="meta" id="modalMeta"></div></div>
-        <div class="modal-actions">
-          <button class="primary hidden" id="modalEditBtn" type="button" onclick="showChangeForm()">編輯</button>
-          <button class="final-button hidden" id="modalFinalBtn" type="button" onclick="showFinalForm()">FINAL</button>
-          <button class="cancel-button hidden" id="modalCancelBtn" type="button" onclick="showCancelForm()">取消</button>
-          <button class="secondary" type="button" onclick="closeModal()">關閉</button>
+        <div>
+          <h2 id="modalTitle">行程介紹</h2>
+          <p class="muted" id="modalSubtitle"></p>
         </div>
+        <button class="secondary" type="button" onclick="closeTour()">關閉</button>
       </div>
-      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-body">
+        <article>
+          <div class="tour-hero-photo" id="modalPhoto"></div>
+          <div class="info-strip" id="modalInfo"></div>
+          <div id="modalFlights"></div>
+          <div class="highlights" id="modalHighlights"></div>
+          <div class="days" id="modalDays"></div>
+          <div class="notice" style="margin-top:14px" id="modalNotice"></div>
+        </article>
+
+        <form class="panel lead-panel" id="leadForm">
+          <h2>我要詢問／報名</h2>
+          <input id="tourName" type="hidden">
+          <div class="two">
+            <div class="field"><label for="name">姓名</label><input id="name" type="text" required></div>
+            <div class="field"><label for="people">人數</label><input id="people" type="number" min="1" required></div>
+          </div>
+          <div class="field"><label for="phone">電話</label><input id="phone" type="tel" required></div>
+          <div class="field"><label for="email">e-mail</label><input id="email" type="email"></div>
+          <div class="field"><label for="memo">需求內容</label><textarea id="memo"></textarea></div>
+          <button class="primary" type="submit">送出</button>
+          <p class="message" id="formMessage"></p>
+          <p class="small">送出後會由我們再聯繫確認；送出不代表預約完成或價格保證。</p>
+        </form>
+      </div>
     </section>
   </div>
 
   <script>
     const supabaseUrl = "https://awlrmtyynguetdsxswgc.supabase.co";
     const supabaseKey = "sb_publishable_-3c0c7c4grzS7_OaNfRALw_Xv31hjIT";
-    const client = supabase.createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        storage: window.sessionStorage,
-        persistSession: true,
-        autoRefreshToken: true
-      }
-    });
-    const adminEmail = "sumomo.iwa@gmail.com";
-    const imageBucket = "itinerary-images";
-    let sessionUser = null;
-    let profile = null;
-    let bookings = [];
-    let activeBooking = null;
-    let inactivityTimer = null;
-    const inactivityLimit = 30 * 60 * 1000;
+    const client = supabase.createClient(supabaseUrl, supabaseKey);
 
     const $ = (id) => document.getElementById(id);
-    const esc = (value) => String(value ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
-    const fmt = (value) => value ? value.replaceAll("-", "/") : "未填";
-
-    function setMessage(id, text) { $(id).textContent = text || ""; }
-
-    function startInactivityTimer() {
-      stopInactivityTimer();
-      ["click", "keydown", "mousemove", "scroll", "touchstart"].forEach((eventName) => {
-        window.addEventListener(eventName, resetInactivityTimer, { passive: true });
-      });
-      resetInactivityTimer();
-    }
-
-    function resetInactivityTimer() {
-      clearTimeout(inactivityTimer);
-      inactivityTimer = setTimeout(signOutForInactivity, inactivityLimit);
-    }
-
-    function stopInactivityTimer() {
-      clearTimeout(inactivityTimer);
-      ["click", "keydown", "mousemove", "scroll", "touchstart"].forEach((eventName) => {
-        window.removeEventListener(eventName, resetInactivityTimer);
-      });
-    }
-
-    async function signOutForInactivity() {
-      stopInactivityTimer();
-      await client.auth.signOut();
-      sessionUser = null;
-      profile = null;
-      bookings = [];
-      activeBooking = null;
-      $("mainPanel").classList.add("hidden");
-      $("signOutBtn").classList.add("hidden");
-      $("userBadge").classList.add("hidden");
-      $("authPanel").classList.remove("hidden");
-      $("bookingList").innerHTML = "";
-      closeModal();
-      setMessage("authMessage", "閒置時間較久，請重新登入。");
-    }
-
-    async function init() {
-      $("loginBtn").onclick = login;
-      $("authEmail").onkeydown = submitLoginOnEnter;
-      $("authPassword").onkeydown = submitLoginOnEnter;
-      $("signOutBtn").onclick = signOut;
-      $("searchInput").oninput = renderList;
-      $("adminRefreshBtn").onclick = loadBookings;
-      $("bookingForm").onsubmit = createBooking;
-      $("departureDate").onchange = syncReturnDateMin;
-      const { data } = await client.auth.getSession();
-      if (data.session?.user) await enterApp(data.session.user);
-    }
-
-    async function login() {
-      setMessage("authMessage", "登入中...");
-      if (!$("authEmail").value.trim()) {
-        setMessage("authMessage", "請輸入帳號。");
-        return;
+    const tours = {
+      "東北五日｜藏王樹冰・銀山溫泉・松島海岸": {
+        subtitle: "冬季限定｜5日｜參考價 NT$ 49,800 起",
+        image: "https://prd-static.gltjp.com/glt/data/directory/14000/13656/20220912_164052_ea0c870a_w1920.jpg",
+        info: [["天數", "5天4夜"], ["價格", "NT$ 49,800 起"]],
+        flights: [
+          {
+            type: "去程",
+            airline: "星宇航空",
+            flightNo: "JX862",
+            date: "出發日期",
+            departTime: "11:50",
+            departPlace: "桃園國際機場",
+            arriveTime: "16:00",
+            arrivePlace: "仙台機場"
+          },
+          {
+            type: "回程",
+            airline: "星宇航空",
+            flightNo: "JX863",
+            date: "回程日期",
+            departTime: "17:25",
+            departPlace: "仙台機場",
+            arriveTime: "20:35",
+            arrivePlace: "桃園國際機場"
+          }
+        ],
+        highlights: ["冬季限定，安排藏王樹冰雪景", "銀山溫泉街與東北雪景散策", "松島海岸、仙台市區與溫泉住宿可搭配"],
+        gallery: [
+          "https://prd-static.gltjp.com/glt/data/directory/14000/13656/20220912_164052_ea0c870a_w1920.jpg",
+          "https://cdn.4travel.jp/img/thumbnails/imk/travelogue_pict/73/41/96/650x_73419664.jpg?updated_at=1654051145",
+          "https://rimage.gnst.jp/livejapan.com/public/article/detail/a/30/00/a3000253/img/en/a3000253_parts_63d0cb8191b6b.jpg?20231121095000=&q=80",
+          "https://images.trvl-media.com/lodging/17000000/16350000/16341600/16341512/6c74c406.jpg?impolicy=resizecrop&ra=fill&rh=575&rw=575"
+        ],
+        notice: "冬季景點會受天候、道路、纜車運行狀況影響；正式內容以實際確認後安排為準。",
+        days: [
+          ["Day 1  桃園國際機場／仙台國際機場－住宿飯店", "今日帶著一顆興奮的心，集合於桃園國際機場，由專人協助辦理登機手續後，搭乘豪華客機飛往日本東北地區的第一大都市仙台，抵達「仙台國際機場」。\n辦理入境手續及提領行李後，展開精彩的旅程。\n出關後隨即前往今晚入住的飯店，今晚養足精神，以備翌日精彩的愉快旅程。\n\n早餐：溫暖的家\n午餐：機上簡餐\n晚餐：居酒屋料理或燒肉\n住宿：仙台市區飯店", [
+            "https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?auto=format&fit=crop&w=1200&q=80",
+            "https://cdn.4travel.jp/img/thumbnails/imk/travelogue_pict/73/41/96/650x_73419664.jpg?updated_at=1654051145",
+            "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=900&q=80"
+          ]],
+          ["Day 2  仙台朝市－銀山溫泉街－天童溫泉", "早餐後前往距離仙台車站步行約5分鐘的「仙台朝市」。\n這裡不是只給觀光客看的景點，而是仙台人日常採買的市場，新鮮蔬果、海鮮、在地小吃一字排開，空氣裡有市場才有的熱鬧聲音。可以邊走邊看、邊吃邊逛，把東北早晨的生活感一起收進旅程裡。\n\n午後前往充滿大正浪漫氣息的「銀山溫泉街」。沿著河岸排列的木造旅館、街燈與小橋，讓整條溫泉街像故事裡的場景。冬季白雪覆上屋簷時，暖色燈光映在河面上，是東北最讓人想停下來拍照的風景之一。\n\n傍晚前往天童溫泉入住，今晚在溫泉飯店慢慢放鬆，享受山形溫泉鄉的悠閒氣氛。\n\n早餐：飯店內\n午餐：山形鄉土料理或日式定食\n晚餐：飯店內會席料理或自助餐\n住宿：天童溫泉", [
+            "https://rimage.gnst.jp/livejapan.com/public/article/detail/a/30/00/a3000253/img/en/a3000253_parts_63d0cb8191b6b.jpg?20231121095000=&q=80",
+            "https://cdn.4travel.jp/img/thumbnails/imk/travelogue_pict/73/41/96/650x_73419664.jpg?updated_at=1654051145",
+            "https://images.trvl-media.com/lodging/17000000/16350000/16341600/16341512/6c74c406.jpg?impolicy=resizecrop&ra=fill&rh=575&rw=575"
+          ]],
+          ["Day 3  藏王溫泉－銀山溫泉街－山形散策", "今日前往充滿大正浪漫氛圍的「銀山溫泉街」。\n冬季時分，木造旅館沿著河岸排列，白雪覆蓋屋簷與石板小路，彷彿走進電影場景一般。\n在此可自由散策、拍照，或品嚐溫泉街小點，感受東北溫泉鄉獨有的懷舊風情。\n下午視時間安排山形市區或周邊景點，晚間入住溫泉或市區飯店。\n\n早餐：飯店內享用\n午餐：日式料理\n晚餐：飯店內自助餐或在地料理\n住宿：天童溫泉／山形市區飯店／同級"],
+          ["Day 4  山形－松島海岸－仙台市區", "早餐後前往日本三景之一「松島海岸」。\n松島以散布在海灣中的大小島嶼聞名，冬季景色清透寧靜，可依當日狀況安排海岸散策、瑞巖寺周邊或遊船體驗。\n午後返回仙台市區，可安排購物、品嚐牛舌料理或自由散策，為旅程留下輕鬆的城市時光。\n\n早餐：飯店內享用\n午餐：松島牡蠣料理或日式定食\n晚餐：仙台牛舌料理或方便逛街自理\n住宿：仙台市區飯店／同級"],
+          ["Day 5  仙台市區－仙台國際機場／台灣．桃園國際機場", "早餐後依航班時間整理行李，前往仙台國際機場。\n若時間允許，可安排機場周邊購物或最後採買伴手禮。\n隨後搭乘豪華客機返回台灣，帶著滿滿的東北雪景回憶，結束此次愉快的冬季旅程。\n\n早餐：飯店內享用\n午餐：機場自理或機上簡餐\n晚餐：溫暖的家\n住宿：溫暖的家"]
+        ]
       }
-      if (!$("authPassword").value) {
-        setMessage("authMessage", "請輸入密碼。");
-        return;
-      }
-      const { data, error } = await client.auth.signInWithPassword({
-        email: $("authEmail").value.trim(),
-        password: $("authPassword").value
-      });
-      if (error) return setMessage("authMessage", friendlyAuthError(error.message));
-      await enterApp(data.user);
-    }
+    };
 
-    function friendlyAuthError(message) {
-      if (message?.toLowerCase().includes("invalid login")) return "帳號或密碼不正確。";
-      if (message?.toLowerCase().includes("email not confirmed")) return "帳號尚未啟用，請聯絡管理者。";
-      if (message?.toLowerCase().includes("missing email")) return "請輸入帳號。";
-      return message || "登入失敗，請再試一次。";
-    }
+    renderTourCards();
+    loadPublishedTours();
 
-    function submitLoginOnEnter(event) {
-      if (event.key === "Enter") login();
-    }
-
-    async function signOut() {
-      stopInactivityTimer();
-      await client.auth.signOut();
-      location.reload();
-    }
-
-    async function enterApp(user) {
-      sessionUser = user;
-      $("authPanel").classList.add("hidden");
-      $("mainPanel").classList.remove("hidden");
-      $("signOutBtn").classList.remove("hidden");
-      $("userBadge").classList.remove("hidden");
-      await ensureProfile();
-      $("userBadge").textContent = `${profile.display_name}｜${profile.role === "admin" ? "管理者" : "登入中"}`;
-      syncReturnDateMin();
-      $("adminRefreshBtn").classList.toggle("hidden", profile.role !== "admin");
-      startInactivityTimer();
-      await loadBookings();
-    }
-
-    async function ensureProfile() {
-      const { data } = await client.from("profiles").select("*").eq("id", sessionUser.id).single();
-      if (data) { profile = data; return; }
-      const role = sessionUser.email.toLowerCase() === adminEmail ? "admin" : "customer";
-      const fallback = {
-        id: sessionUser.id,
-        email: sessionUser.email,
-        display_name: sessionUser.email.toLowerCase() === adminEmail ? "Natuho" : sessionUser.email.split("@")[0],
-        role
-      };
-      const { data: inserted, error } = await client.from("profiles").insert(fallback).select().single();
-      if (error) throw error;
-      profile = inserted;
-    }
-
-    async function createBooking(event) {
-      event.preventDefault();
-      setMessage("formMessage", "送出中...");
-      setMessage("imageUploadMessage", "");
-      const bookingId = crypto.randomUUID();
-      let imageUrls = [];
-      try {
-        imageUrls = await uploadSelectedImages("imageFiles", bookingId, "imageUploadMessage");
-      } catch (error) {
-        setMessage("formMessage", error.message);
-        return;
-      }
-      const payload = {
-        id: bookingId,
-        user_id: sessionUser.id,
-        booking_type: "general",
-        departure_date: $("departureDate").value,
-        return_date: $("returnDate").value,
-        group_name: $("groupName").value.trim(),
-        booker_name: profile.display_name || sessionUser.email.split("@")[0],
-        email: profile.email || sessionUser.email,
-        vehicle_type: "",
-        people_count: $("peopleCount").value ? Number($("peopleCount").value) : null,
-        guide_name: $("guideName").value.trim(),
-        phone: "",
-        itinerary: $("itinerary").value.trim(),
-        hotel_name: null,
-        room_count: null,
-        meal_plan: null,
-        image_urls: imageUrls,
-        status: "新規待回覆"
-      };
-      const { error } = await client.from("booking_requests").insert(payload);
-      if (error) return setMessage("formMessage", error.message);
-      $("bookingForm").reset();
-      setMessage("imageUploadMessage", "");
-      setMessage("formMessage", "已送出。");
-      await loadBookings();
-    }
-
-    async function loadBookings() {
-      const { data, error } = await client.from("booking_requests").select("*").order("created_at", { ascending:false });
-      if (error) { $("bookingList").innerHTML = `<li class="card">${esc(error.message)}</li>`; return; }
-      bookings = data || [];
-      await autoCompletePastBookings();
-      renderList();
-    }
-
-    function renderList() {
-      const q = $("searchInput").value.trim().toLowerCase();
-      const filtered = bookings
-        .filter((b) => [b.group_name,b.booker_name,b.vehicle_type,b.guide_name,b.itinerary,b.email,b.hotel_name,b.meal_plan,b.booking_type].join(" ").toLowerCase().includes(q))
-        .sort((a, b) => {
-          const aClosed = a.status === "已完成";
-          const bClosed = b.status === "已完成";
-          if (aClosed && !bClosed) return 1;
-          if (!aClosed && bClosed) return -1;
-          return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
-            || (a.departure_date || "").localeCompare(b.departure_date || "");
-        });
-      $("bookingList").innerHTML = filtered.length ? filtered.map((b) => `
-        <li class="card ${b.status === "取消" ? "cancelled" : ""} ${b.status === "已完成" ? "completed" : ""} ${["FINAL等候回覆", "FINAL已確認"].includes(b.status) ? "final-waiting" : ""} ${b.status === "新規待回覆" ? "new-waiting" : ""} ${b.status === "等待客戶回覆" ? "customer-waiting" : ""} ${b.status === "預約OK" ? "reservation-ok" : ""}">
-          <div class="card-head">
-            <button class="link-button" type="button" onclick="openBooking('${b.id}')">${esc(b.group_name)}</button>
-            <span class="badge">${esc(b.status)}</span>
+    function renderTourCards() {
+      $("tourGrid").innerHTML = Object.entries(tours).map(([name, tour]) => `
+        <article class="tour-card">
+          <div class="tour-image" style="background-image:url('${tour.image}')"></div>
+          <div class="tour-body">
+            <h3 class="tour-title">${name}</h3>
+            <div class="tags"><span class="tag">行程小本本</span><span class="tag">${(tour.info?.[0]?.[1]) || "可詢問"}</span><span class="tag">可客製</span></div>
+            <p class="muted">${tour.subtitle || "喜歡這個行程可以先送出需求，後續會再聯繫確認。"}</p>
+            <div class="price">${tour.price || tour.info?.find(([label]) => label === "價格")?.[1] || "詢問後報價"}</div>
+            <p class="small">參考價，實際報價依出發日、房型、航班與人數確認。</p>
+            <button class="primary" type="button" onclick="selectTour('${name.replaceAll("'", "\\'")}')">我要詢問</button>
           </div>
-          <div class="meta">
-            <span>出發：${fmt(b.departure_date)}</span>
-            <span>結束：${fmt(b.return_date)}</span>
-            <span>預約者：${esc(b.booker_name)}</span>
-            ${b.people_count ? `<span>人數：${esc(b.people_count)}</span>` : ""}
-          </div>
-        </li>`).join("") : `<li class="card">目前沒有資料。</li>`;
+        </article>
+      `).join("");
     }
 
-    function syncReturnDateMin() {
-      $("returnDate").min = $("departureDate").value || "";
-      if ($("departureDate").value && $("returnDate").value && $("returnDate").value < $("departureDate").value) {
-        $("returnDate").value = "";
-      }
+    async function loadPublishedTours() {
+      const { data, error } = await client.from("site_tours").select("*").eq("is_published", true).order("sort_order", { ascending: true }).order("created_at", { ascending: false });
+      if (error || !data || !data.length) return;
+      Object.keys(tours).forEach((key) => delete tours[key]);
+      data.forEach((row) => {
+        const payload = row.payload || {};
+        const title = payload.title || row.title;
+        tours[title] = {
+          ...payload,
+          subtitle: payload.subtitle || row.subtitle,
+          image: payload.image || row.hero_image,
+          price: payload.price || row.price
+        };
+      });
+      renderTourCards();
     }
 
-    function syncChangeReturnDateMin() {
-      if (!$("chgDeparture") || !$("chgReturn")) return;
-      $("chgReturn").min = $("chgDeparture").value || "";
-      if ($("chgDeparture").value && $("chgReturn").value && $("chgReturn").value < $("chgDeparture").value) {
-        $("chgReturn").value = "";
-      }
+    function scrollToTours() {
+      $("tours").scrollIntoView({ behavior: "smooth" });
     }
 
-    async function openBooking(id) {
-      activeBooking = bookings.find((b) => b.id === id);
-      if (!activeBooking) return;
-      const [{ data: replies }, { data: changes }] = await Promise.all([
-        client.from("booking_replies").select("*").eq("booking_id", id).order("created_at", { ascending:true }),
-        client.from("booking_change_requests").select("*").eq("booking_id", id).order("created_at", { ascending:false })
-      ]);
-      $("modalTitle").textContent = activeBooking.group_name;
-      $("modalMeta").innerHTML = `<span class="badge">${esc(activeBooking.status)}</span><span>出發：${fmt(activeBooking.departure_date)}</span><span>結束：${fmt(activeBooking.return_date)}</span>`;
-      $("modalEditBtn").classList.toggle("hidden", profile.role === "admin" || activeBooking.status === "取消");
-      $("modalFinalBtn").classList.toggle("hidden", profile.role === "admin" || activeBooking.status === "取消");
-      $("modalCancelBtn").classList.toggle("hidden", profile.role === "admin" || activeBooking.status === "取消");
-      $("modalBody").innerHTML = `
-        <section class="detail-grid">
-          ${detail("旅行社", activeBooking.booker_name)}
-          ${detail("團體名稱", activeBooking.group_name)}
-          ${detail("人數", activeBooking.people_count)}
-          ${detail("團體旅遊期間", `${fmt(activeBooking.departure_date)} ～ ${fmt(activeBooking.return_date)}`)}
-          ${detail("預約者名", activeBooking.guide_name)}
-        </section>
-        <section><h3>預約內容</h3><p class="note pre-line">${esc(activeBooking.itinerary)}</p></section>
-        ${imageGallery(activeBooking.image_urls)}
-        ${activeBooking.hotel_name || activeBooking.meal_plan || activeBooking.phone ? `
-          <section class="final-box">
-            <h3>最終內容</h3>
-            <p class="note pre-line">${esc(activeBooking.hotel_name || "未填")}</p>
-            <div class="detail-grid">
-              ${detail("導遊/代表人", activeBooking.meal_plan)}
-              ${detail("電話", activeBooking.phone)}
+    function selectTour(name) {
+      const fallbackName = Object.keys(tours)[0];
+      const selectedName = tours[name] ? name : fallbackName;
+      const tour = tours[selectedName];
+      $("modalTitle").textContent = selectedName;
+      $("modalSubtitle").textContent = tour.subtitle;
+      $("tourName").value = selectedName;
+      $("modalPhoto").style.backgroundImage = `url('${tour.image}')`;
+      $("modalInfo").innerHTML = tour.info.map(([label, value]) => `<div class="info-item"><span>${label}</span><strong>${value}</strong></div>`).join("");
+      $("modalFlights").innerHTML = renderFlights(tour.flights || []);
+      $("modalHighlights").innerHTML = tour.highlights.map((item) => `<div class="highlight">${item}</div>`).join("");
+      $("modalDays").innerHTML = tour.days.map(([title, body, images], index) => renderDay(title, body, images, index, tour.gallery || [tour.image])).join("");
+      $("modalNotice").textContent = tour.notice;
+      $("formMessage").textContent = "";
+      $("tourModal").classList.add("open");
+      $("tourModal").setAttribute("aria-hidden", "false");
+    }
+
+    function renderDay(title, body, dayImages, index, images) {
+      const mealStart = body.indexOf("早餐：");
+      const detail = mealStart >= 0 ? body.slice(0, mealStart).trim() : body.trim();
+      const meals = mealStart >= 0 ? body.slice(mealStart).trim().split("\n").filter(Boolean) : [];
+      const imageList = Array.isArray(dayImages) ? dayImages : dayImages ? [dayImages] : [];
+      const collageImages = [...imageList, ...images].slice(0, 3);
+      const routeTitle = title.replace(/^Day\s*\d+\s*/i, "");
+      const detailId = `dayDetail${index}`;
+      return `
+        <div class="day">
+          <div class="day-content">
+            <div class="day-title"><span>第 ${index + 1} 天</span>${routeTitle}</div>
+            <div class="day-collage">
+              ${collageImages.map((image) => `<div class="day-photo" style="background-image:url('${image}')"></div>`).join("")}
             </div>
-          </section>
-        ` : ""}
-        <section>
-          <h3>回覆紀錄</h3>
-          ${(replies || []).length ? replies.map((r) => `<div class="note pre-line ${r.message === "已填寫 FINAL。" ? "final-note" : ""} ${r.message.startsWith("已取消。") ? "cancel-note" : ""}"><time>${esc(r.author_name)}　${new Date(r.created_at).toLocaleString("zh-TW", { hour12:false })}</time>${esc(r.message)}</div>`).join("") : `<div class="note">尚無回覆。</div>`}
-        </section>
-          ${profile.role === "admin" ? adminTools(activeBooking, changes || []) : customerTools(activeBooking, changes || [])}
+            <div class="detail-toggle"><button type="button" onclick="toggleDayDetail('${detailId}', this)">展開行程內容⌄</button></div>
+            <div class="day-detail" id="${detailId}">${detail}</div>
+            <div class="day-summary">
+              <div class="meal-grid">${meals.map((meal) => `<div class="meal-chip">${meal}</div>`).join("")}</div>
+            </div>
+          </div>
+        </div>
       `;
-      $("detailModal").classList.add("open");
     }
 
-    function detail(label, value) { return `<div class="detail"><span>${label}</span>${esc(value || "未填")}</div>`; }
-
-    function imageGallery(urls) {
-      const list = Array.isArray(urls) ? urls.filter(Boolean) : [];
-      if (!list.length) return "";
-      return `<section><h3>行程圖片</h3><div class="image-grid">${list.map((url) => `<a href="${esc(url)}" target="_blank" rel="noopener"><img class="image-thumb" src="${esc(url)}" alt="行程圖片"></a>`).join("")}</div></section>`;
+    function toggleDayDetail(id, button) {
+      const detail = $(id);
+      const isOpen = detail.classList.toggle("open");
+      button.textContent = isOpen ? "收合行程內容⌃" : "展開行程內容⌄";
     }
 
-    function safeFileName(file) {
-      const extension = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-      const base = file.name.replace(/\.[^.]+$/, "").normalize("NFKD").replace(/[^\w-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "image";
-      return `${base}.${extension}`;
-    }
-
-    async function uploadSelectedImages(inputId, bookingId, messageId) {
-      const input = $(inputId);
-      const files = Array.from(input?.files || []);
-      if (!files.length) return [];
-      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
-      const maxSize = 5 * 1024 * 1024;
-      const urls = [];
-      for (const file of files) {
-        if (!allowedTypes.includes(file.type)) throw new Error(`${file.name} 不是可上傳的圖片格式。`);
-        if (file.size > maxSize) throw new Error(`${file.name} 超過 5MB，請先縮小圖片。`);
-      }
-      for (const [index, file] of files.entries()) {
-        setMessage(messageId, `圖片上傳中 ${index + 1}/${files.length}...`);
-        const path = `${bookingId}/${Date.now()}-${index + 1}-${safeFileName(file)}`;
-        const { error } = await client.storage.from(imageBucket).upload(path, file, {
-          cacheControl: "31536000",
-          contentType: file.type,
-          upsert: false
-        });
-        if (error) throw new Error(`圖片上傳失敗：${error.message}`);
-        const { data } = client.storage.from(imageBucket).getPublicUrl(path);
-        urls.push(data.publicUrl);
-      }
-      setMessage(messageId, `已上傳 ${files.length} 張圖片。`);
-      return urls;
-    }
-
-    function statusOptions(current) {
-      return ["等待客戶回覆", "預約OK", "FINAL等候回覆", "FINAL已確認", "已完成", "取消"]
-        .map((status) => `<option value="${status}" ${current === status ? "selected" : ""}>${status}</option>`)
-        .join("");
-    }
-
-    async function autoCompletePastBookings() {
-      const today = new Date().toISOString().slice(0, 10);
-      const targets = bookings.filter((b) => b.return_date && b.return_date < today && !["已完成", "取消"].includes(b.status));
-      if (!targets.length) return;
-      await Promise.all(targets.map((b) => client.from("booking_requests").update({
-        status: "已完成",
-        updated_at: new Date().toISOString()
-      }).eq("id", b.id)));
-      bookings = bookings.map((b) => targets.some((target) => target.id === b.id) ? { ...b, status: "已完成" } : b);
-    }
-
-    function adminTools(b, changes) {
+    function renderFlights(flights) {
+      if (!flights.length) return "";
       return `
-        <section>
-          <h3>管理者回覆</h3>
-          <div class="field"><label for="replyText">回覆內容</label><textarea id="replyText"></textarea></div>
-          <div class="two">
-            <div class="field"><label for="statusSelect">狀態</label><select id="statusSelect">
-              ${statusOptions(b.status)}
-            </select></div>
-            <div class="field"><label>&nbsp;</label><button class="primary" type="button" onclick="sendReply()">送出回覆</button></div>
+        <div class="flight-box">
+          <div class="flight-head">
+            <h3>參考航班</h3>
+            <div class="flight-note">本行程航班以行程確認單為準</div>
           </div>
-        </section>
-        `;
-    }
-
-    function customerTools(b, changes) {
-      return `
-        <section>
-          <div id="changeForm" class="hidden" style="margin-top:12px">
-            <h3>修改內容</h3>
-            <div class="two"><div class="field"><label for="chgDeparture">出發日期</label><input id="chgDeparture" type="date" value="${esc(b.departure_date)}"></div><div class="field"><label for="chgReturn">結束日期</label><input id="chgReturn" type="date" value="${esc(b.return_date)}"></div></div>
-            <div class="two"><div class="field"><label for="chgGroup">團體名稱</label><input id="chgGroup" type="text" value="${esc(b.group_name)}"></div><div class="field"><label for="chgPeople">人數</label><input id="chgPeople" type="number" value="${esc(b.people_count)}"></div></div>
-            <input id="chgEmail" type="hidden" value="${esc(b.email)}">
-            <input id="chgVehicle" type="hidden" value="">
-            <input id="chgHotelName" type="hidden" value="">
-            <input id="chgRoomCount" type="hidden" value="">
-            <input id="chgMealPlan" type="hidden" value="">
-            <input id="chgPhone" type="hidden" value="">
-            <div class="field"><label for="chgGuide">預約者姓名</label><input id="chgGuide" type="text" value="${esc(b.guide_name)}"></div>
-            <div class="field"><label for="chgItinerary">預約內容</label><textarea id="chgItinerary">${esc(b.itinerary)}</textarea></div>
-            <div class="field">
-              <label for="chgImageFiles">追加行程圖片</label>
-              <input id="chgImageFiles" type="file" accept="image/jpeg,image/png,image/webp" multiple>
-              <div class="hint">新選的圖片會加在原本圖片後面。</div>
-              <div class="upload-status" id="chgImageUploadMessage"></div>
+          <div class="flight-table">
+          ${flights.map((flight) => `
+            <div class="flight-row">
+              <div class="flight-type">${flight.type}</div>
+              <div class="flight-airline"><strong>${flight.airline}</strong><span>${flight.flightNo}</span></div>
+              <div class="flight-date">${flight.date}</div>
+              <div>
+                <div class="flight-time">${flight.departTime}</div>
+                <div class="flight-place">${flight.departPlace}</div>
+              </div>
+              <div class="flight-arrow" aria-hidden="true"></div>
+              <div>
+                <div class="flight-time">${flight.arriveTime}</div>
+                <div class="flight-place">${flight.arrivePlace}</div>
+              </div>
             </div>
-            <button class="primary" type="button" onclick="requestChange()">送出修改</button>
+          `).join("")}
           </div>
-          <div id="finalForm" class="hidden" style="margin-top:12px">
-            <h3>FINAL</h3>
-            <div class="field"><label for="finalContent">最終內容</label><textarea id="finalContent" required>${esc(b.hotel_name)}</textarea></div>
-            <div class="two">
-              <div class="field"><label for="finalRepresentative">導遊/代表人</label><input id="finalRepresentative" type="text" required value="${esc(b.meal_plan)}"></div>
-              <div class="field"><label for="finalPhone">電話</label><input id="finalPhone" type="tel" required value="${esc(b.phone)}"></div>
-            </div>
-            <button class="primary" type="button" onclick="saveFinal()">送出</button>
-          </div>
-          <div id="cancelForm" class="cancel-box hidden" style="margin-top:12px">
-            <h3>取消</h3>
-            <div class="field"><label for="cancelReason">取消原因</label><textarea id="cancelReason" required></textarea></div>
-            <button class="cancel-button" type="button" onclick="cancelBooking()">送出取消</button>
-          </div>
-        </section>`;
+        </div>
+      `;
     }
 
-    async function sendReply() {
-      const message = $("replyText").value.trim();
-      const status = $("statusSelect").value;
-      if (message) await client.from("booking_replies").insert({ booking_id: activeBooking.id, author_id: sessionUser.id, author_name:"Natuho", message });
-      await client.from("booking_requests").update({ status, updated_at:new Date().toISOString() }).eq("id", activeBooking.id);
-      await loadBookings();
-      await openBooking(activeBooking.id);
+    function closeTour() {
+      $("tourModal").classList.remove("open");
+      $("tourModal").setAttribute("aria-hidden", "true");
     }
 
-    function showChangeForm() {
-      $("changeForm").classList.remove("hidden");
-      $("finalForm").classList.add("hidden");
-      $("cancelForm").classList.add("hidden");
-      syncChangeReturnDateMin();
-      $("chgDeparture").onchange = syncChangeReturnDateMin;
-    }
+    $("tourModal").addEventListener("click", (event) => {
+      if (event.target === $("tourModal")) closeTour();
+    });
 
-    function showFinalForm() {
-      $("finalForm").classList.remove("hidden");
-      $("changeForm").classList.add("hidden");
-      $("cancelForm").classList.add("hidden");
-    }
-
-    function showCancelForm() {
-      $("cancelForm").classList.remove("hidden");
-      $("changeForm").classList.add("hidden");
-      $("finalForm").classList.add("hidden");
-    }
-
-    async function requestChange() {
-      let addedImageUrls = [];
-      try {
-        addedImageUrls = await uploadSelectedImages("chgImageFiles", activeBooking.id, "chgImageUploadMessage");
-      } catch (error) {
-        alert(error.message);
-        return;
-      }
+    $("leadForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      $("formMessage").textContent = "送出中...";
       const payload = {
-        departure_date:$("chgDeparture").value, return_date:$("chgReturn").value, group_name:$("chgGroup").value.trim(),
-        email:$("chgEmail").value.trim(), vehicle_type:$("chgVehicle").value.trim(), people_count:$("chgPeople").value ? Number($("chgPeople").value) : null,
-        guide_name:$("chgGuide").value.trim(), phone:$("chgPhone").value.trim(), itinerary:$("chgItinerary").value.trim(),
-        booking_type: "general",
-        hotel_name: $("chgHotelName").value.trim() || null,
-        room_count: $("chgRoomCount").value ? Number($("chgRoomCount").value) : null,
-        meal_plan: $("chgMealPlan").value || null,
-        image_urls: [...(Array.isArray(activeBooking.image_urls) ? activeBooking.image_urls : []), ...addedImageUrls],
-        updated_at: new Date().toISOString()
+        tour_name: $("tourName").value,
+        customer_name: $("name").value.trim(),
+        people_count: $("people").value ? Number($("people").value) : null,
+        phone: $("phone").value.trim(),
+        email: $("email").value.trim(),
+        memo: $("memo").value.trim(),
+        status: "新規詢問"
       };
-      await client.from("booking_requests").update(payload).eq("id", activeBooking.id);
-      await client.from("booking_replies").insert({
-        booking_id: activeBooking.id,
-        author_id: sessionUser.id,
-        author_name: profile.display_name || activeBooking.booker_name || "客戶",
-        message: "已修改內容。"
-      });
-      await loadBookings();
-      await openBooking(activeBooking.id);
-    }
 
-    async function cancelBooking() {
-      const reason = $("cancelReason").value.trim();
-      if (!reason) {
-        alert("請填寫取消原因。");
+      const { error } = await client.from("direct_inquiries").insert(payload);
+      if (error) {
+        $("formMessage").textContent = "目前送出失敗，請稍後再試，或直接聯繫我們。";
         return;
       }
-      await client.from("booking_requests").update({
-        status: "取消",
-        updated_at: new Date().toISOString()
-      }).eq("id", activeBooking.id);
-      await client.from("booking_replies").insert({
-        booking_id: activeBooking.id,
-        author_id: sessionUser.id,
-        author_name: profile.display_name || activeBooking.booker_name || "客戶",
-        message: `已取消。\n取消原因：${reason}`
-      });
-      await loadBookings();
-      await openBooking(activeBooking.id);
-    }
 
-    async function saveFinal() {
-      const finalContent = $("finalContent").value.trim();
-      const representative = $("finalRepresentative").value.trim();
-      const phone = $("finalPhone").value.trim();
-      if (!finalContent || !representative || !phone) {
-        alert("請填寫最終內容、導遊/代表人、電話。");
-        return;
-      }
-      await client.from("booking_requests").update({
-        hotel_name: finalContent,
-        meal_plan: representative,
-        phone,
-        status: "FINAL等候回覆",
-        updated_at: new Date().toISOString()
-      }).eq("id", activeBooking.id);
-      await client.from("booking_replies").insert({
-        booking_id: activeBooking.id,
-        author_id: sessionUser.id,
-        author_name: profile.display_name || activeBooking.booker_name || "客戶",
-        message: "已填寫 FINAL。"
-      });
-      await loadBookings();
-      await openBooking(activeBooking.id);
-    }
-
-    function closeModal() { $("detailModal").classList.remove("open"); }
-    $("detailModal").addEventListener("click", (event) => { if (event.target === $("detailModal")) closeModal(); });
-    init();
+      $("leadForm").reset();
+      $("tourName").value = payload.tour_name;
+      $("formMessage").textContent = "已送出，後續會再與你聯繫。";
+    });
   </script>
 </body>
 </html>
