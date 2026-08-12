@@ -156,18 +156,62 @@
   <script>
     const supabaseUrl = "https://awlrmtyynguetdsxswgc.supabase.co";
     const supabaseKey = "sb_publishable_-3c0c7c4grzS7_OaNfRALw_Xv31hjIT";
-    const client = supabase.createClient(supabaseUrl, supabaseKey);
+    const client = supabase.createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        storage: window.sessionStorage,
+        persistSession: true,
+        autoRefreshToken: true
+      }
+    });
     const adminEmail = "sumomo.iwa@gmail.com";
     let sessionUser = null;
     let profile = null;
     let bookings = [];
     let activeBooking = null;
+    let inactivityTimer = null;
+    const inactivityLimit = 30 * 60 * 1000;
 
     const $ = (id) => document.getElementById(id);
     const esc = (value) => String(value ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
     const fmt = (value) => value ? value.replaceAll("-", "/") : "未填";
 
     function setMessage(id, text) { $(id).textContent = text || ""; }
+
+    function startInactivityTimer() {
+      stopInactivityTimer();
+      ["click", "keydown", "mousemove", "scroll", "touchstart"].forEach((eventName) => {
+        window.addEventListener(eventName, resetInactivityTimer, { passive: true });
+      });
+      resetInactivityTimer();
+    }
+
+    function resetInactivityTimer() {
+      clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(signOutForInactivity, inactivityLimit);
+    }
+
+    function stopInactivityTimer() {
+      clearTimeout(inactivityTimer);
+      ["click", "keydown", "mousemove", "scroll", "touchstart"].forEach((eventName) => {
+        window.removeEventListener(eventName, resetInactivityTimer);
+      });
+    }
+
+    async function signOutForInactivity() {
+      stopInactivityTimer();
+      await client.auth.signOut();
+      sessionUser = null;
+      profile = null;
+      bookings = [];
+      activeBooking = null;
+      $("mainPanel").classList.add("hidden");
+      $("signOutBtn").classList.add("hidden");
+      $("userBadge").classList.add("hidden");
+      $("authPanel").classList.remove("hidden");
+      $("bookingList").innerHTML = "";
+      closeModal();
+      setMessage("authMessage", "閒置時間較久，請重新登入。");
+    }
 
     async function init() {
       $("loginBtn").onclick = login;
@@ -212,6 +256,7 @@
     }
 
     async function signOut() {
+      stopInactivityTimer();
       await client.auth.signOut();
       location.reload();
     }
@@ -226,6 +271,7 @@
       $("userBadge").textContent = `${profile.display_name}｜${profile.role === "admin" ? "管理者" : "登入中"}`;
       syncReturnDateMin();
       $("adminRefreshBtn").classList.toggle("hidden", profile.role !== "admin");
+      startInactivityTimer();
       await loadBookings();
     }
 
