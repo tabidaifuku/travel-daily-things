@@ -408,7 +408,8 @@
 
       const { error } = await client.from("direct_inquiries").insert(payload);
       if (error) {
-        $("formMessage").textContent = "目前送出失敗，請稍後再試，或直接聯繫我們。";
+        console.error("direct_inquiries insert failed", error);
+        $("formMessage").textContent = `目前送出失敗：${error.message || "請稍後再試，或直接聯繫我們。"}`;
         return;
       }
 
