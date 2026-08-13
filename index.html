@@ -69,15 +69,16 @@
       border-radius: 8px;
       box-shadow: 0 12px 34px rgba(38, 31, 22, .08);
     }
-    .tour-card { overflow: hidden; display: grid; }
+    .tour-card { overflow: hidden; display: grid; min-width: 0; }
     .tour-image { aspect-ratio: 21 / 8; min-height: 180px; background-size: cover; background-position: center; }
-    .tour-body { padding: 16px; display: grid; gap: 12px; }
+    .tour-body { padding: 16px; display: grid; gap: 12px; min-width: 0; }
+    .tour-body > * { min-width: 0; }
     .tour-body .primary { justify-self: start; min-width: 132px; max-width: 100%; }
-    .tour-title { font-size: 20px; font-weight: 900; margin: 0; }
-    .tour-subtitle { margin: 0; overflow-wrap: anywhere; word-break: break-word; }
+    .tour-title { font-size: 20px; font-weight: 900; margin: 0; overflow-wrap: anywhere; word-break: break-word; }
+    .tour-subtitle { margin: 0; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
     .tags { display: flex; gap: 8px; flex-wrap: wrap; }
     .tag { display: inline-flex; align-items: center; min-height: 26px; padding: 0 9px; border-radius: 999px; background: var(--soft); color: var(--green-dark); font-size: 13px; font-weight: 700; }
-    .price { font-size: 22px; font-weight: 900; color: var(--blue); }
+    .price { font-size: 22px; font-weight: 900; color: var(--blue); overflow-wrap: anywhere; word-break: break-word; }
     .small { font-size: 12px; color: var(--muted); line-height: 1.6; }
 
     .panel { padding: 18px; }
