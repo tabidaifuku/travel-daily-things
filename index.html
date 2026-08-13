@@ -70,7 +70,7 @@
       box-shadow: 0 12px 34px rgba(38, 31, 22, .08);
     }
     .tour-card { overflow: hidden; display: grid; }
-    .tour-image { min-height: 180px; background-size: cover; background-position: center; }
+    .tour-image { aspect-ratio: 21 / 8; min-height: 180px; background-size: cover; background-position: center; }
     .tour-body { padding: 16px; display: grid; gap: 12px; }
     .tour-title { font-size: 20px; font-weight: 900; margin: 0; }
     .tags { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -105,7 +105,7 @@
     .modal { width: min(980px, 100%); max-height: 92vh; overflow: auto; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 70px rgba(23, 31, 30, .28); }
     .modal-head { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; gap: 14px; align-items: start; padding: 16px 18px; background: #faf7ef; border-bottom: 1px solid var(--line); }
     .modal-body { padding: 18px; display: grid; gap: 16px; align-items: start; }
-    .tour-hero-photo { min-height: 320px; border-radius: 8px; background-size: cover; background-position: center; border: 1px solid var(--line); margin-bottom: 14px; }
+    .tour-hero-photo { width: 100%; aspect-ratio: 21 / 8; border-radius: 8px; background-size: cover; background-position: center; border: 1px solid var(--line); margin-bottom: 14px; }
     .info-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
     .info-item { background: #f8f5ed; border: 1px solid #e7decd; border-radius: 6px; padding: 10px; }
     .info-item span { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
@@ -133,7 +133,7 @@
     @media (max-width: 920px) {
       .hero, .tour-grid, .info-strip { grid-template-columns: 1fr; }
       .photo { min-height: 300px; }
-      .tour-hero-photo { min-height: 250px; }
+      .tour-hero-photo { aspect-ratio: 21 / 8; }
       .day-collage { grid-template-columns: 1fr 1fr; }
       .meal-grid { grid-template-columns: repeat(2, 1fr); }
       .meal-chip:nth-child(4) { grid-column: 1 / -1; }
@@ -160,7 +160,7 @@
         <p class="lead">訂房、訂車、訂餐、 and anything... 問我。這裡會放一些可以詢問或報名的行程，喜歡哪個就填資料，後續會再由我們聯繫確認。</p>
         <div class="hero-actions">
           <button class="primary" type="button" onclick="scrollToTours()">看看行程</button>
-          <button class="secondary" type="button" onclick="selectTour('東北五日｜藏王樹冰・銀山溫泉・松島海岸')">直接詢問</button>
+          <button class="secondary" type="button" onclick="scrollToTours()">直接詢問</button>
         </div>
       </div>
       <div class="photo" aria-label="冬季旅遊印象圖"></div>
@@ -174,17 +174,6 @@
         </div>
       </div>
       <div class="tour-grid" id="tourGrid">
-        <article class="tour-card">
-          <div class="tour-image" style="background-image:url('https://prd-static.gltjp.com/glt/data/directory/14000/13656/20220912_164052_ea0c870a_w1920.jpg')"></div>
-          <div class="tour-body">
-            <h3 class="tour-title">東北五日｜藏王樹冰・銀山溫泉・松島海岸</h3>
-            <div class="tags"><span class="tag">冬季限定</span><span class="tag">5日</span><span class="tag">可客製</span></div>
-            <p class="muted">適合第一次想看雪景、溫泉街與東北經典景點的旅人。</p>
-            <div class="price">NT$ 49,800 起</div>
-            <p class="small">參考價，實際報價依出發日、房型、航班與人數確認。</p>
-            <button class="primary" type="button" onclick="selectTour('東北五日｜藏王樹冰・銀山溫泉・松島海岸')">我要詢問</button>
-          </div>
-        </article>
       </div>
     </section>
 
@@ -237,66 +226,19 @@
     const client = supabase.createClient(supabaseUrl, supabaseKey);
 
     const $ = (id) => document.getElementById(id);
-    const tours = {
-      "東北五日｜藏王樹冰・銀山溫泉・松島海岸": {
-        subtitle: "冬季限定｜5日｜參考價 NT$ 49,800 起",
-        image: "https://prd-static.gltjp.com/glt/data/directory/14000/13656/20220912_164052_ea0c870a_w1920.jpg",
-        info: [["天數", "5天4夜"], ["價格", "NT$ 49,800 起"]],
-        flights: [
-          {
-            type: "去程",
-            airline: "星宇航空",
-            flightNo: "JX862",
-            date: "出發日期",
-            departTime: "11:50",
-            departPlace: "桃園國際機場",
-            arriveTime: "16:00",
-            arrivePlace: "仙台機場"
-          },
-          {
-            type: "回程",
-            airline: "星宇航空",
-            flightNo: "JX863",
-            date: "回程日期",
-            departTime: "17:25",
-            departPlace: "仙台機場",
-            arriveTime: "20:35",
-            arrivePlace: "桃園國際機場"
-          }
-        ],
-        highlights: ["冬季限定，安排藏王樹冰雪景", "銀山溫泉街與東北雪景散策", "松島海岸、仙台市區與溫泉住宿可搭配"],
-        gallery: [
-          "https://prd-static.gltjp.com/glt/data/directory/14000/13656/20220912_164052_ea0c870a_w1920.jpg",
-          "https://cdn.4travel.jp/img/thumbnails/imk/travelogue_pict/73/41/96/650x_73419664.jpg?updated_at=1654051145",
-          "https://rimage.gnst.jp/livejapan.com/public/article/detail/a/30/00/a3000253/img/en/a3000253_parts_63d0cb8191b6b.jpg?20231121095000=&q=80",
-          "https://images.trvl-media.com/lodging/17000000/16350000/16341600/16341512/6c74c406.jpg?impolicy=resizecrop&ra=fill&rh=575&rw=575"
-        ],
-        notice: "冬季景點會受天候、道路、纜車運行狀況影響；正式內容以實際確認後安排為準。",
-        days: [
-          ["Day 1  桃園國際機場／仙台國際機場－住宿飯店", "今日帶著一顆興奮的心，集合於桃園國際機場，由專人協助辦理登機手續後，搭乘豪華客機飛往日本東北地區的第一大都市仙台，抵達「仙台國際機場」。\n辦理入境手續及提領行李後，展開精彩的旅程。\n出關後隨即前往今晚入住的飯店，今晚養足精神，以備翌日精彩的愉快旅程。\n\n早餐：溫暖的家\n午餐：機上簡餐\n晚餐：居酒屋料理或燒肉\n住宿：仙台市區飯店", [
-            "https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?auto=format&fit=crop&w=1200&q=80",
-            "https://cdn.4travel.jp/img/thumbnails/imk/travelogue_pict/73/41/96/650x_73419664.jpg?updated_at=1654051145",
-            "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=900&q=80"
-          ]],
-          ["Day 2  仙台朝市－銀山溫泉街－天童溫泉", "早餐後前往距離仙台車站步行約5分鐘的「仙台朝市」。\n這裡不是只給觀光客看的景點，而是仙台人日常採買的市場，新鮮蔬果、海鮮、在地小吃一字排開，空氣裡有市場才有的熱鬧聲音。可以邊走邊看、邊吃邊逛，把東北早晨的生活感一起收進旅程裡。\n\n午後前往充滿大正浪漫氣息的「銀山溫泉街」。沿著河岸排列的木造旅館、街燈與小橋，讓整條溫泉街像故事裡的場景。冬季白雪覆上屋簷時，暖色燈光映在河面上，是東北最讓人想停下來拍照的風景之一。\n\n傍晚前往天童溫泉入住，今晚在溫泉飯店慢慢放鬆，享受山形溫泉鄉的悠閒氣氛。\n\n早餐：飯店內\n午餐：山形鄉土料理或日式定食\n晚餐：飯店內會席料理或自助餐\n住宿：天童溫泉", [
-            "https://rimage.gnst.jp/livejapan.com/public/article/detail/a/30/00/a3000253/img/en/a3000253_parts_63d0cb8191b6b.jpg?20231121095000=&q=80",
-            "https://cdn.4travel.jp/img/thumbnails/imk/travelogue_pict/73/41/96/650x_73419664.jpg?updated_at=1654051145",
-            "https://images.trvl-media.com/lodging/17000000/16350000/16341600/16341512/6c74c406.jpg?impolicy=resizecrop&ra=fill&rh=575&rw=575"
-          ]],
-          ["Day 3  藏王溫泉－銀山溫泉街－山形散策", "今日前往充滿大正浪漫氛圍的「銀山溫泉街」。\n冬季時分，木造旅館沿著河岸排列，白雪覆蓋屋簷與石板小路，彷彿走進電影場景一般。\n在此可自由散策、拍照，或品嚐溫泉街小點，感受東北溫泉鄉獨有的懷舊風情。\n下午視時間安排山形市區或周邊景點，晚間入住溫泉或市區飯店。\n\n早餐：飯店內享用\n午餐：日式料理\n晚餐：飯店內自助餐或在地料理\n住宿：天童溫泉／山形市區飯店／同級"],
-          ["Day 4  山形－松島海岸－仙台市區", "早餐後前往日本三景之一「松島海岸」。\n松島以散布在海灣中的大小島嶼聞名，冬季景色清透寧靜，可依當日狀況安排海岸散策、瑞巖寺周邊或遊船體驗。\n午後返回仙台市區，可安排購物、品嚐牛舌料理或自由散策，為旅程留下輕鬆的城市時光。\n\n早餐：飯店內享用\n午餐：松島牡蠣料理或日式定食\n晚餐：仙台牛舌料理或方便逛街自理\n住宿：仙台市區飯店／同級"],
-          ["Day 5  仙台市區－仙台國際機場／台灣．桃園國際機場", "早餐後依航班時間整理行李，前往仙台國際機場。\n若時間允許，可安排機場周邊購物或最後採買伴手禮。\n隨後搭乘豪華客機返回台灣，帶著滿滿的東北雪景回憶，結束此次愉快的冬季旅程。\n\n早餐：飯店內享用\n午餐：機場自理或機上簡餐\n晚餐：溫暖的家\n住宿：溫暖的家"]
-        ]
-      }
-    };
+    const tours = {};
 
     renderTourCards();
     loadPublishedTours();
 
     function renderTourCards() {
+      if (!Object.keys(tours).length) {
+        $("tourGrid").innerHTML = `<div class="panel"><p class="muted" style="margin:0">目前尚未上架行程，請稍後再看看。</p></div>`;
+        return;
+      }
       $("tourGrid").innerHTML = Object.entries(tours).map(([name, tour]) => `
         <article class="tour-card">
-          <div class="tour-image" style="background-image:url('${tour.image}')"></div>
+          ${tour.image ? `<div class="tour-image" style="${imageStyle(tour.image, tour.heroStyle)}"></div>` : ""}
           <div class="tour-body">
             <h3 class="tour-title">${name}</h3>
             <div class="tags"><span class="tag">行程小本本</span><span class="tag">${(tour.info?.[0]?.[1]) || "可詢問"}</span><span class="tag">可客製</span></div>
@@ -332,17 +274,20 @@
 
     function selectTour(name) {
       const fallbackName = Object.keys(tours)[0];
+      if (!fallbackName) return;
       const selectedName = tours[name] ? name : fallbackName;
       const tour = tours[selectedName];
       $("modalTitle").textContent = selectedName;
       $("modalSubtitle").textContent = tour.subtitle;
       $("tourName").value = selectedName;
+      $("modalPhoto").classList.toggle("hidden", !tour.image);
       $("modalPhoto").style.cssText = imageStyle(tour.image, tour.heroStyle);
-      $("modalInfo").innerHTML = tour.info.map(([label, value]) => `<div class="info-item"><span>${label}</span><strong>${value}</strong></div>`).join("");
+      $("modalInfo").innerHTML = (tour.info || []).map(([label, value]) => `<div class="info-item"><span>${label}</span><strong>${value}</strong></div>`).join("");
       $("modalFlights").innerHTML = renderFlights(tour.flights || []);
-      $("modalHighlights").innerHTML = tour.highlights.map((item) => `<div class="highlight">${item}</div>`).join("");
-      $("modalDays").innerHTML = tour.days.map((day, index) => renderDay(day, index)).join("");
-      $("modalNotice").textContent = tour.notice;
+      $("modalHighlights").innerHTML = (tour.highlights || []).map((item) => `<div class="highlight">${item}</div>`).join("");
+      $("modalDays").innerHTML = (tour.days || []).map((day, index) => renderDay(day, index)).join("");
+      $("modalNotice").textContent = tour.notice || "";
+      $("modalNotice").classList.toggle("hidden", !tour.notice);
       $("formMessage").textContent = "";
       $("tourModal").classList.add("open");
       $("tourModal").setAttribute("aria-hidden", "false");
@@ -378,6 +323,7 @@
     }
 
     function imageStyle(url, style = {}) {
+      if (!url) return "";
       const x = Number(style.x ?? 50);
       const y = Number(style.y ?? 50);
       const zoom = Number(style.zoom ?? 100);
