@@ -406,16 +406,24 @@
         status: "新規詢問"
       };
 
-      const { error } = await client.from("direct_inquiries").insert(payload);
+      const { data, error } = await client.from("direct_inquiries").insert(payload).select("id, created_at").single();
       if (error) {
         $("formMessage").textContent = "目前送出失敗，請稍後再試，或直接聯繫我們。";
         return;
       }
 
+      notifyInquiryByEmail({ ...payload, ...data });
       $("leadForm").reset();
       $("tourName").value = payload.tour_name;
       $("formMessage").textContent = "已送出，後續會再與你聯繫。";
     });
+
+    async function notifyInquiryByEmail(inquiry) {
+      const { error } = await client.functions.invoke("send-inquiry-email", {
+        body: { inquiry }
+      });
+      if (error) console.warn("詢問通知信寄送失敗，但詢問資料已儲存。", error);
+    }
   </script>
 </body>
 </html>
