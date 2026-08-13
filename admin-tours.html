@@ -61,7 +61,7 @@
     .login-box { max-width: 460px; margin: 54px auto; }
     .hint { color: var(--muted); font-size: 12px; line-height: 1.6; margin-top: 6px; }
     .upload-status { color: var(--green-dark); font-size: 13px; font-weight: 800; line-height: 1.6; margin-top: 6px; }
-    .file-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; justify-content: start; }
+    .file-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; justify-content: start; }
     .file-actions input[type="file"] { width: 100%; min-width: 0; font-size: 12px; }
     .file-actions button { white-space: nowrap; }
     .editor-shell { overflow: visible; max-height: none; opacity: 1; transform: translateY(0); transition: opacity .2s ease, transform .2s ease; }
@@ -81,6 +81,9 @@
     .preview-collage { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
     .preview-day-photo { aspect-ratio: 4 / 3; border-radius: 8px; background-size: cover; background-position: center; border: 1px solid var(--line); }
     .preview-text { white-space: pre-wrap; border-left: 3px solid var(--green); background: #fffefa; padding: 12px; border-radius: 6px; }
+    .library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; padding: 18px; }
+    .library-item { min-height: 118px; border: 1px solid var(--line); border-radius: 8px; background-size: cover; background-position: center; box-shadow: inset 0 0 0 1px rgba(255,255,255,.55); }
+    .library-empty { padding: 24px 18px; color: var(--muted); line-height: 1.7; }
 
     @media (max-width: 780px) {
       .top, .grid, .grid-3 { grid-template-columns: 1fr; display: grid; }
@@ -99,6 +102,7 @@
       </div>
       <div class="toolbar">
         <a href="index.html"><button class="ghost" type="button">看前台</button></a>
+        <a href="admin-inquiries.html"><button class="ghost" type="button">詢問單</button></a>
         <button class="secondary hidden" id="logoutBtn" type="button">登出</button>
       </div>
     </section>
@@ -155,6 +159,7 @@
           <div class="image-preview hero-preview empty" id="heroPreview" data-file-input="heroImageFile">尚未選擇圖片</div>
           <div class="file-actions">
             <input id="heroImageFile" type="file" accept="image/jpeg,image/png,image/webp">
+            <button class="ghost" type="button" onclick="openImageLibrary('hero')">圖片庫</button>
             <button class="secondary" type="button" onclick="clearHeroImage()">刪除圖片</button>
           </div>
           <div class="hint">可直接拖曳圖片調整位置，滾動滑鼠滾輪可縮放。</div>
@@ -210,6 +215,8 @@
       <section class="panel">
         <div class="toolbar">
           <button class="primary" type="button" id="saveBtn">預覽／儲存修改</button>
+          <button class="secondary" type="button" id="duplicateBtn">複製這筆</button>
+          <button class="ghost" type="button" id="shareLinkBtn">複製前台連結</button>
           <button class="danger" type="button" id="deleteBtn">刪除這筆</button>
         </div>
         <p class="message" id="saveMessage"></p>
@@ -234,6 +241,19 @@
     </section>
   </div>
 
+  <div class="preview-bg" id="imageLibraryModal">
+    <section class="preview-modal" role="dialog" aria-modal="true" aria-labelledby="imageLibraryTitle">
+      <div class="preview-head">
+        <div>
+          <h2 id="imageLibraryTitle">圖片庫</h2>
+          <p class="muted">這裡會列出目前已儲存行程使用過的圖片。</p>
+        </div>
+        <button class="secondary" type="button" onclick="closeImageLibrary()">關閉</button>
+      </div>
+      <div id="imageLibraryBody"></div>
+    </section>
+  </div>
+
   <script>
     const supabaseUrl = "https://awlrmtyynguetdsxswgc.supabase.co";
     const supabaseKey = "sb_publishable_-3c0c7c4grzS7_OaNfRALw_Xv31hjIT";
@@ -244,6 +264,9 @@
     let savedTours = [];
     const pendingDayImageFiles = {};
     let hasUnsavedChanges = false;
+    let idleLogoutTimer = null;
+    let imageLibraryTarget = null;
+    const idleLogoutMs = 10 * 60 * 1000;
     const regionOrder = ["北海道", "東北", "關東", "中部・北陸", "關西", "中國・四國", "九州・沖繩", "其他"];
 
     for (let i = 1; i <= 10; i += 1) {
@@ -258,14 +281,15 @@
     $("loginPassword").addEventListener("keydown", (event) => { if (event.key === "Enter") login(); });
     $("logoutBtn").addEventListener("click", async () => {
       if (!confirmLeaveUnsaved()) return;
-      await client.auth.signOut();
-      location.reload();
+      await logout();
     });
     $("daysCount").addEventListener("change", () => {
       markDirty();
       renderDayEditors(Number($("daysCount").value));
     });
     $("saveBtn").addEventListener("click", showPreview);
+    $("duplicateBtn").addEventListener("click", duplicateCurrentTour);
+    $("shareLinkBtn").addEventListener("click", copyFrontendLink);
     $("loadToursBtn").addEventListener("click", () => {
       if (confirmLeaveUnsaved()) loadTours();
     });
@@ -292,6 +316,9 @@
     $("previewModal").addEventListener("click", (event) => {
       if (event.target === $("previewModal")) closePreview();
     });
+    $("imageLibraryModal").addEventListener("click", (event) => {
+      if (event.target === $("imageLibraryModal")) closeImageLibrary();
+    });
 
     init();
     watchEditableFields($("editorPanel"));
@@ -300,9 +327,17 @@
       event.preventDefault();
       event.returnValue = "資料尚未儲存，確定離開此頁？";
     });
+    ["pointerdown", "keydown", "scroll", "touchstart"].forEach((eventName) => {
+      window.addEventListener(eventName, resetIdleLogoutTimer, { passive: true });
+    });
 
     async function init() {
       renderDayEditors(5);
+      const logoutMessage = sessionStorage.getItem("adminLogoutMessage");
+      if (logoutMessage) {
+        $("loginMessage").textContent = logoutMessage;
+        sessionStorage.removeItem("adminLogoutMessage");
+      }
       const { data } = await client.auth.getSession();
       if (data.session) showAdmin();
     }
@@ -324,7 +359,25 @@
       $("loginPanel").classList.add("hidden");
       $("adminPanel").classList.remove("hidden");
       $("logoutBtn").classList.remove("hidden");
+      resetIdleLogoutTimer();
       await loadTours();
+    }
+
+    async function logout(message = "") {
+      clearTimeout(idleLogoutTimer);
+      idleLogoutTimer = null;
+      hasUnsavedChanges = false;
+      await client.auth.signOut();
+      if (message) sessionStorage.setItem("adminLogoutMessage", message);
+      location.reload();
+    }
+
+    function resetIdleLogoutTimer() {
+      if ($("adminPanel").classList.contains("hidden")) return;
+      clearTimeout(idleLogoutTimer);
+      idleLogoutTimer = setTimeout(() => {
+        logout("已閒置 10 分鐘，系統已自動登出。");
+      }, idleLogoutMs);
     }
 
     async function loadTours() {
@@ -389,6 +442,34 @@
       markClean();
     }
 
+    function duplicateCurrentTour() {
+      if (!currentId) {
+        $("saveMessage").textContent = "請先選擇一筆已儲存行程，再使用複製。";
+        return;
+      }
+      const payload = collectPayload();
+      currentId = null;
+      $("title").value = `${payload.title || "未命名行程"} 複製`;
+      if ($("tourSelect")) $("tourSelect").value = "__new__";
+      $("editorModeHint").textContent = "正在新增：由既有行程複製而來";
+      $("saveMessage").textContent = "已複製成新行程，確認內容後按「預覽／儲存修改」就會新增一筆。";
+      markDirty();
+    }
+
+    async function copyFrontendLink() {
+      if (!currentId) {
+        $("saveMessage").textContent = "請先選擇已儲存行程，儲存後才能複製前台連結。";
+        return;
+      }
+      const url = `${location.origin}${location.pathname.replace(/admin-tours\.html$/, "index.html")}?tour=${encodeURIComponent(currentId)}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        $("saveMessage").textContent = "前台行程連結已複製。";
+      } catch (error) {
+        prompt("請複製這個前台連結：", url);
+      }
+    }
+
     function showEditor() {
       $("editorPanel").classList.remove("editor-collapsed");
     }
@@ -446,6 +527,7 @@
           <div class="image-preview day-preview empty" id="dayPreview${dayIndex}_${imageIndex}" data-file-input="dayImageFile${dayIndex}_${imageIndex}">尚未選擇圖片</div>
           <div class="file-actions">
             <input id="dayImageFile${dayIndex}_${imageIndex}" type="file" accept="image/jpeg,image/png,image/webp">
+            <button class="ghost" type="button" onclick="openImageLibrary('day', ${dayIndex}, ${imageIndex})">圖片庫</button>
             <button class="secondary" type="button" onclick="clearDayImage(${dayIndex}, ${imageIndex})">刪除圖片</button>
           </div>
           <div class="hint">可拖曳調整位置，滾輪可縮放。</div>
@@ -788,6 +870,63 @@
       $(`dayImage${dayIndex}_0`).value = url;
     }
 
+    function openImageLibrary(type, dayIndex = null, imageIndex = null) {
+      imageLibraryTarget = { type, dayIndex, imageIndex };
+      const urls = collectImageLibraryUrls();
+      if (!urls.length) {
+        $("imageLibraryBody").innerHTML = `<div class="library-empty">目前還沒有可重複使用的圖片。先儲存一筆有圖片的行程後，這裡就會出現圖片。</div>`;
+      } else {
+        $("imageLibraryBody").innerHTML = `<div class="library-grid">${urls.map((url) => `
+          <button class="library-item" type="button" style="${previewImageStyle(url)}" onclick="chooseLibraryImage('${escapeJs(url)}')" aria-label="選擇圖片"></button>
+        `).join("")}</div>`;
+      }
+      $("imageLibraryModal").classList.add("open");
+    }
+
+    function closeImageLibrary() {
+      $("imageLibraryModal").classList.remove("open");
+      imageLibraryTarget = null;
+    }
+
+    function chooseLibraryImage(url) {
+      if (!imageLibraryTarget) return;
+      if (imageLibraryTarget.type === "hero") {
+        $("heroImage").value = url;
+        $("heroImageFile").value = "";
+        clearLocalPreview("heroPreview");
+        updatePreview("heroPreview", url, "hero");
+      } else {
+        const { dayIndex, imageIndex } = imageLibraryTarget;
+        const inputId = `dayImage${dayIndex}_${imageIndex}`;
+        const fileId = `dayImageFile${dayIndex}_${imageIndex}`;
+        const previewId = `dayPreview${dayIndex}_${imageIndex}`;
+        $(inputId).value = url;
+        $(fileId).value = "";
+        delete pendingDayImageFiles[`${dayIndex}_${imageIndex}`];
+        clearLocalPreview(previewId);
+        updatePreview(previewId, url, `dayImageStyle${dayIndex}_${imageIndex}`);
+      }
+      markDirty();
+      closeImageLibrary();
+    }
+
+    function collectImageLibraryUrls() {
+      const urls = new Set();
+      savedTours.forEach((tour) => {
+        const payload = tour.payload || {};
+        [payload.image, tour.hero_image].forEach((url) => addLibraryUrl(urls, url));
+        (payload.days || []).forEach((day) => {
+          const images = Array.isArray(day?.[2]) ? day[2] : day?.[2] ? [day[2]] : [];
+          images.forEach((url) => addLibraryUrl(urls, url));
+        });
+      });
+      return Array.from(urls);
+    }
+
+    function addLibraryUrl(urls, url) {
+      if (typeof url === "string" && /^https?:\/\//.test(url)) urls.add(url);
+    }
+
     function clearLocalPreview(previewId) {
       const preview = $(previewId);
       if (!preview) return;
@@ -1075,6 +1214,10 @@
 
     function escapeText(value) {
       return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;");
+    }
+
+    function escapeJs(value) {
+      return String(value || "").replaceAll("\\", "\\\\").replaceAll("'", "\\'");
     }
   </script>
 </body>
