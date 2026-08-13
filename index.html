@@ -118,6 +118,9 @@
     .modal-bg.open { display: flex; }
     .modal { width: min(980px, 100%); max-height: 92vh; overflow: auto; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 70px rgba(23, 31, 30, .28); }
     .modal-head { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; gap: 14px; align-items: start; padding: 16px 18px; background: #faf7ef; border-bottom: 1px solid var(--line); }
+    .modal-title-block { min-width: 0; }
+    .modal-title-block h2 { overflow-wrap: anywhere; word-break: break-word; }
+    .modal-head button { flex: 0 0 auto; white-space: nowrap; min-width: 58px; padding: 0 12px; }
     .modal-body { padding: 18px; display: grid; gap: 16px; align-items: start; }
     .tour-hero-photo { width: 100%; aspect-ratio: 21 / 8; border-radius: 8px; background-size: cover; background-position: center; border: 1px solid var(--line); margin-bottom: 14px; }
     .info-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
@@ -172,8 +175,8 @@
     <section class="hero">
       <div>
         <p class="eyebrow">旅遊大小事</p>
-        <h1>想去日本玩，先丟給我。</h1>
-        <p class="lead">訂房、訂車、訂餐、 and anything... 問我。這裡會放一些可以詢問或報名的行程，喜歡哪個就填資料，後續會再由我們聯繫確認。</p>
+        <h1>日本旅行，<br>從一個想法開始。</h1>
+        <p class="lead">訂房、訂車、訂餐、 and anything... 問我。</p>
         <div class="hero-actions">
           <button class="primary" type="button" onclick="scrollToTours()">看看行程</button>
           <button class="secondary" type="button" onclick="scrollToTours()">直接詢問</button>
@@ -184,7 +187,7 @@
 
     <section id="tours">
       <div class="section-head">
-        <div>
+        <div class="modal-title-block">
           <h2>行程小本本</h2>
           <p class="muted">先放幾個適合詢問的範例，價格為參考起價，實際安排會依日期、人數、飯店與機位調整。</p>
         </div>
@@ -308,6 +311,9 @@
       $("formMessage").textContent = "";
       $("tourModal").classList.add("open");
       $("tourModal").setAttribute("aria-hidden", "false");
+      $("tourModal").scrollTop = 0;
+      const modal = document.querySelector(".modal");
+      if (modal) modal.scrollTop = 0;
     }
 
     function renderDay(day, index) {
