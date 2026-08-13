@@ -178,7 +178,13 @@
           <div class="range-row hidden-control"><label for="heroPosY">上下</label><input id="heroPosY" type="range" min="0" max="100" value="50" oninput="syncRangeValue('heroPosY')"><span id="heroPosYValue">50%</span></div>
           <div class="range-row hidden-control"><label for="heroZoom">縮放</label><input id="heroZoom" type="range" min="100" max="180" value="100" oninput="syncRangeValue('heroZoom')"><span id="heroZoomValue">100%</span></div>
         </div>
-        <div class="field"><label for="notice">注意事項</label><textarea id="notice"></textarea></div>
+        <div class="field">
+          <label for="notice">注意事項</label>
+          <textarea id="notice" placeholder="可填寫護照、天候、飯店、餐食、交通、行李等提醒。"></textarea>
+          <div class="toolbar" style="margin-top:8px">
+            <button class="ghost" type="button" id="noticeTemplateBtn">套用注意事項範本</button>
+          </div>
+        </div>
 
         <h2>航班資訊</h2>
         <div class="grid">
@@ -311,6 +317,7 @@
     $("saveBtn").addEventListener("click", showPreview);
     $("duplicateBtn").addEventListener("click", duplicateCurrentTour);
     $("shareLinkBtn").addEventListener("click", copyFrontendLink);
+    $("noticeTemplateBtn").addEventListener("click", applyNoticeTemplate);
     $("loadToursBtn").addEventListener("click", () => {
       if (confirmLeaveUnsaved()) loadTours();
     });
@@ -530,6 +537,21 @@
       if ($("tourSelect")) $("tourSelect").value = "__new__";
       $("editorModeHint").textContent = "正在新增：由既有行程複製而來";
       $("saveMessage").textContent = "已複製成新行程，確認內容後按「預覽／儲存修改」就會新增一筆。";
+      markDirty();
+    }
+
+    function applyNoticeTemplate() {
+      if ($("notice").value.trim() && !confirm("目前已有注意事項內容，要用範本覆蓋嗎？")) return;
+      $("notice").value = [
+        "旅遊注意事項",
+        "・本行程內容為參考安排，實際航班、飯店、餐食與景點順序，會依出發日期、訂位狀況與當地實際情況調整。",
+        "・日本各地天候變化較大，請依季節準備合適衣物、雨具與方便行走的鞋子。",
+        "・部分景點、餐廳、交通或體驗活動，可能因天候、營業時間、預約狀況或現場管制而調整。",
+        "・若有素食、食物過敏、行動不便、嬰幼兒同行或其他特殊需求，請於報名前先告知，以便協助確認可安排內容。",
+        "・飯店房型、床型、吸菸／禁菸、樓層與相鄰房等需求，將盡力協助安排，但仍以飯店最終回覆為準。",
+        "・出發前請確認護照效期、簽證規定、入境規範與個人旅遊保險。",
+        "・行程報價會依出發日、航班、飯店、房型、人數與匯率等條件調整，實際內容與費用以最終確認單為準。"
+      ].join("\n");
       markDirty();
     }
 
