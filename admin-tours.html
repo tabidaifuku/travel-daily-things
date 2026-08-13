@@ -64,8 +64,8 @@
     .file-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; justify-content: start; }
     .file-actions input[type="file"] { width: 100%; min-width: 0; font-size: 12px; }
     .file-actions button { white-space: nowrap; }
-    .editor-shell { overflow: hidden; max-height: 5000px; opacity: 1; transform: translateY(0); transition: max-height .28s ease, opacity .2s ease, transform .2s ease; }
-    .editor-shell.editor-collapsed { max-height: 0; opacity: 0; transform: translateY(-6px); pointer-events: none; }
+    .editor-shell { overflow: visible; max-height: none; opacity: 1; transform: translateY(0); transition: opacity .2s ease, transform .2s ease; }
+    .editor-shell.editor-collapsed { overflow: hidden; max-height: 0; opacity: 0; transform: translateY(-6px); pointer-events: none; }
     .preview-bg { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; padding: 18px; background: rgba(23, 31, 30, .46); }
     .preview-bg.open { display: flex; }
     .preview-modal { width: min(980px, 100%); max-height: 92vh; overflow: auto; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 70px rgba(23, 31, 30, .28); }
