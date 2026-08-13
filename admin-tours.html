@@ -84,11 +84,15 @@
     .library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; padding: 18px; }
     .library-item { min-height: 118px; border: 1px solid var(--line); border-radius: 8px; background-size: cover; background-position: center; box-shadow: inset 0 0 0 1px rgba(255,255,255,.55); }
     .library-empty { padding: 24px 18px; color: var(--muted); line-height: 1.7; }
+    .library-filters { display: grid; grid-template-columns: minmax(160px, 220px) minmax(160px, 220px) 1fr; gap: 10px; align-items: end; padding: 14px 18px; border-bottom: 1px solid var(--line); background: #faf7ef; }
+    .library-count { color: var(--muted); font-size: 13px; font-weight: 800; padding-bottom: 10px; }
+    .library-caption { display: block; width: 100%; min-height: 30px; margin-top: 88px; padding: 5px 7px; border-radius: 0 0 7px 7px; background: rgba(255, 253, 248, .9); color: #26302f; font-size: 12px; line-height: 1.35; text-align: left; }
 
     @media (max-width: 780px) {
       .top, .grid, .grid-3 { grid-template-columns: 1fr; display: grid; }
       .top { align-items: start; }
       .file-actions { grid-template-columns: 1fr; }
+      .library-filters { grid-template-columns: 1fr; }
       .preview-info, .preview-collage { grid-template-columns: 1fr; }
     }
   </style>
@@ -266,8 +270,19 @@
     let hasUnsavedChanges = false;
     let idleLogoutTimer = null;
     let imageLibraryTarget = null;
+    let imageLibraryItems = [];
     const idleLogoutMs = 10 * 60 * 1000;
     const regionOrder = ["北海道", "東北", "關東", "中部・北陸", "關西", "中國・四國", "九州・沖繩", "其他"];
+    const prefectureGroups = {
+      "北海道": ["北海道"],
+      "東北": ["青森", "岩手", "秋田", "山形", "宮城", "福島"],
+      "關東": ["東京", "千葉", "埼玉", "神奈川", "茨城", "栃木", "群馬"],
+      "中部・北陸": ["愛知", "靜岡", "山梨", "長野", "新潟", "富山", "石川", "福井", "岐阜"],
+      "關西": ["大阪", "京都", "奈良", "兵庫", "和歌山", "滋賀", "三重"],
+      "中國・四國": ["廣島", "岡山", "鳥取", "島根", "山口", "香川", "德島", "愛媛", "高知"],
+      "九州・沖繩": ["福岡", "佐賀", "長崎", "大分", "熊本", "宮崎", "鹿兒島", "沖繩"],
+      "其他": ["未分類"]
+    };
 
     for (let i = 1; i <= 10; i += 1) {
       const option = document.createElement("option");
@@ -427,6 +442,62 @@
       if (/中國|四國|廣島|岡山|鳥取|島根|山口|香川|德島|愛媛|高知/.test(text)) return "中國・四國";
       if (/九州|沖繩|福岡|佐賀|長崎|大分|熊本|宮崎|鹿兒島|那霸|石垣|別府|阿蘇|湯布院|人吉/.test(text)) return "九州・沖繩";
       return "其他";
+    }
+
+    function inferPrefecture(text, region = "") {
+      const rules = [
+        ["北海道", /北海道|札幌|函館|小樽|富良野|旭川|帶廣|釧路|知床|洞爺|登別|美瑛/],
+        ["青森", /青森|弘前|奧入瀨|奥入瀬|十和田|八戶|八戸/],
+        ["岩手", /岩手|盛岡|花卷|花巻|平泉|猊鼻溪|猊鼻渓|小岩井/],
+        ["秋田", /秋田|角館|田澤湖|田沢湖|男鹿|乳頭/],
+        ["山形", /山形|藏王|蔵王|銀山|米澤|米沢|天童|上山/],
+        ["宮城", /宮城|仙台|松島|鳴子|秋保|白石/],
+        ["福島", /福島|會津|会津|豬苗代|猪苗代|大內宿|大内宿|磐梯/],
+        ["東京", /東京|銀座|新宿|澀谷|渋谷|淺草|浅草|上野|池袋/],
+        ["千葉", /千葉|成田|舞濱|舞浜|迪士尼|房總|房総/],
+        ["埼玉", /埼玉|川越|秩父|大宮/],
+        ["神奈川", /神奈川|橫濱|横浜|箱根|鎌倉|江之島|江ノ島/],
+        ["茨城", /茨城|水戶|水戸|大洗|筑波|袋田/],
+        ["栃木", /栃木|日光|鬼怒川|宇都宮|那須/],
+        ["群馬", /群馬|草津|伊香保|水上|高崎/],
+        ["愛知", /愛知|名古屋|犬山|常滑/],
+        ["靜岡", /靜岡|静岡|伊豆|熱海|富士宮|濱松|浜松/],
+        ["山梨", /山梨|河口湖|富士山|忍野|甲府/],
+        ["長野", /長野|輕井澤|軽井沢|松本|上高地|白馬|諏訪/],
+        ["新潟", /新潟|越後|苗場|湯澤|湯沢|佐渡/],
+        ["富山", /富山|立山|黑部|黒部|五箇山/],
+        ["石川", /石川|金澤|金沢|和倉|能登|加賀/],
+        ["福井", /福井|東尋坊|永平寺|敦賀/],
+        ["岐阜", /岐阜|高山|白川鄉|白川郷|下呂|郡上/],
+        ["大阪", /大阪|心齋橋|心斎橋|難波|梅田|環球影城|USJ/],
+        ["京都", /京都|嵐山|清水寺|祇園|宇治|天橋立/],
+        ["奈良", /奈良|東大寺|吉野|春日大社/],
+        ["兵庫", /兵庫|神戶|神戸|姬路|姫路|有馬|淡路/],
+        ["和歌山", /和歌山|白濱|白浜|高野山|熊野/],
+        ["滋賀", /滋賀|琵琶湖|近江|彥根|彦根/],
+        ["三重", /三重|伊勢|鳥羽|志摩|長島/],
+        ["廣島", /廣島|広島|宮島|尾道/],
+        ["岡山", /岡山|倉敷|後樂園|後楽園/],
+        ["鳥取", /鳥取|砂丘|皆生/],
+        ["島根", /島根|出雲|松江|玉造/],
+        ["山口", /山口|下關|下関|萩|岩國|岩国/],
+        ["香川", /香川|高松|小豆島|琴平/],
+        ["德島", /德島|徳島|鳴門|祖谷/],
+        ["愛媛", /愛媛|松山|道後|今治/],
+        ["高知", /高知|四萬十|四万十|桂濱|桂浜/],
+        ["福岡", /福岡|博多|太宰府|門司港/],
+        ["佐賀", /佐賀|嬉野|武雄|有田/],
+        ["長崎", /長崎|豪斯登堡|佐世保|雲仙|島原/],
+        ["大分", /大分|別府|湯布院|由布院|九重/],
+        ["熊本", /熊本|阿蘇|黑川|黒川|人吉|天草/],
+        ["宮崎", /宮崎|高千穗|高千穂|青島/],
+        ["鹿兒島", /鹿兒島|鹿児島|櫻島|桜島|指宿|霧島/],
+        ["沖繩", /沖繩|沖縄|那霸|那覇|石垣|宮古|恩納|美ら海/]
+      ];
+      const match = rules.find(([, pattern]) => pattern.test(text));
+      if (match) return match[0];
+      const fallback = (prefectureGroups[region] || [])[0];
+      return fallback || "未分類";
     }
 
     function newTour(skipConfirm = false) {
@@ -872,13 +943,26 @@
 
     function openImageLibrary(type, dayIndex = null, imageIndex = null) {
       imageLibraryTarget = { type, dayIndex, imageIndex };
-      const urls = collectImageLibraryUrls();
-      if (!urls.length) {
+      imageLibraryItems = collectImageLibraryItems();
+      if (!imageLibraryItems.length) {
         $("imageLibraryBody").innerHTML = `<div class="library-empty">目前還沒有可重複使用的圖片。先儲存一筆有圖片的行程後，這裡就會出現圖片。</div>`;
       } else {
-        $("imageLibraryBody").innerHTML = `<div class="library-grid">${urls.map((url) => `
-          <button class="library-item" type="button" style="${previewImageStyle(url)}" onclick="chooseLibraryImage('${escapeJs(url)}')" aria-label="選擇圖片"></button>
-        `).join("")}</div>`;
+        $("imageLibraryBody").innerHTML = `
+          <div class="library-filters">
+            <div>
+              <label for="libraryRegionFilter">地區</label>
+              <select id="libraryRegionFilter" onchange="renderImageLibraryGrid()"></select>
+            </div>
+            <div>
+              <label for="libraryPrefectureFilter">細項</label>
+              <select id="libraryPrefectureFilter" onchange="renderImageLibraryGrid()"></select>
+            </div>
+            <div class="library-count" id="libraryCount"></div>
+          </div>
+          <div id="libraryGridArea"></div>
+        `;
+        renderImageLibraryFilters();
+        renderImageLibraryGrid();
       }
       $("imageLibraryModal").classList.add("open");
     }
@@ -910,21 +994,84 @@
       closeImageLibrary();
     }
 
-    function collectImageLibraryUrls() {
-      const urls = new Set();
-      savedTours.forEach((tour) => {
-        const payload = tour.payload || {};
-        [payload.image, tour.hero_image].forEach((url) => addLibraryUrl(urls, url));
-        (payload.days || []).forEach((day) => {
-          const images = Array.isArray(day?.[2]) ? day[2] : day?.[2] ? [day[2]] : [];
-          images.forEach((url) => addLibraryUrl(urls, url));
-        });
+    function renderImageLibraryFilters() {
+      const regions = regionOrder.filter((region) => imageLibraryItems.some((item) => item.region === region));
+      $("libraryRegionFilter").innerHTML = `<option value="">全部地區</option>${regions.map((region) => `<option value="${escapeAttr(region)}">${escapeText(region)}</option>`).join("")}`;
+      $("libraryPrefectureFilter").innerHTML = `<option value="">全部細項</option>`;
+      $("libraryRegionFilter").addEventListener("change", () => {
+        renderImageLibraryPrefectureFilter();
+        renderImageLibraryGrid();
       });
-      return Array.from(urls);
+      renderImageLibraryPrefectureFilter();
     }
 
-    function addLibraryUrl(urls, url) {
-      if (typeof url === "string" && /^https?:\/\//.test(url)) urls.add(url);
+    function renderImageLibraryPrefectureFilter() {
+      const region = $("libraryRegionFilter")?.value || "";
+      const prefectures = Array.from(new Set(imageLibraryItems
+        .filter((item) => !region || item.region === region)
+        .map((item) => item.prefecture || "未分類")))
+        .sort((a, b) => getPrefectureOrder(region, a) - getPrefectureOrder(region, b) || a.localeCompare(b, "zh-Hant"));
+      $("libraryPrefectureFilter").innerHTML = `<option value="">全部細項</option>${prefectures.map((name) => `<option value="${escapeAttr(name)}">${escapeText(name)}</option>`).join("")}`;
+    }
+
+    function renderImageLibraryGrid() {
+      const region = $("libraryRegionFilter")?.value || "";
+      const prefecture = $("libraryPrefectureFilter")?.value || "";
+      const items = imageLibraryItems.filter((item) => {
+        return (!region || item.region === region) && (!prefecture || item.prefecture === prefecture);
+      });
+      $("libraryCount").textContent = `共 ${items.length} 張圖片`;
+      $("libraryGridArea").innerHTML = items.length
+        ? `<div class="library-grid">${items.map((item) => `
+          <button class="library-item" type="button" style="${previewImageStyle(item.url)}" onclick="chooseLibraryImage('${escapeJs(item.url)}')" aria-label="選擇圖片">
+            <span class="library-caption">${escapeText(item.region)}／${escapeText(item.prefecture)}<br>${escapeText(item.title || "圖片")}</span>
+          </button>
+        `).join("")}</div>`
+        : `<div class="library-empty">這個分類目前沒有圖片。</div>`;
+    }
+
+    function getPrefectureOrder(region, prefecture) {
+      const list = prefectureGroups[region] || Object.values(prefectureGroups).flat();
+      const index = list.indexOf(prefecture);
+      return index >= 0 ? index : 999;
+    }
+
+    function collectImageLibraryItems() {
+      const items = [];
+      const seen = new Set();
+      savedTours.forEach((tour) => {
+        const payload = tour.payload || {};
+        const baseText = `${tour.title || ""} ${tour.subtitle || ""} ${payload.title || ""} ${payload.subtitle || ""} ${payload.region || ""}`;
+        const baseRegion = payload.region || getTourRegion(tour);
+        [payload.image, tour.hero_image].forEach((url) => addLibraryItem(items, seen, url, {
+          region: baseRegion,
+          text: baseText,
+          title: payload.title || tour.title || "橫幅圖片"
+        }));
+        (payload.days || []).forEach((day) => {
+          const images = Array.isArray(day?.[2]) ? day[2] : day?.[2] ? [day[2]] : [];
+          const dayTitle = day?.[0] || "";
+          const dayBody = day?.[1] || "";
+          images.forEach((url) => addLibraryItem(items, seen, url, {
+            region: baseRegion,
+            text: `${baseText} ${dayTitle} ${dayBody}`,
+            title: dayTitle.replace(/^Day\s*\d+\s*/i, "") || payload.title || tour.title || "DAY 圖片"
+          }));
+        });
+      });
+      return items;
+    }
+
+    function addLibraryItem(items, seen, url, meta) {
+      if (typeof url !== "string" || !/^https?:\/\//.test(url) || seen.has(url)) return;
+      seen.add(url);
+      const region = meta.region || inferRegion(meta.text || "") || "其他";
+      items.push({
+        url,
+        region,
+        prefecture: inferPrefecture(meta.text || "", region),
+        title: meta.title || ""
+      });
     }
 
     function clearLocalPreview(previewId) {
