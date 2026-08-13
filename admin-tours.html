@@ -64,12 +64,14 @@
     .file-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; justify-content: start; }
     .file-actions input[type="file"] { width: 100%; min-width: 0; font-size: 12px; }
     .file-actions button { white-space: nowrap; }
+    .editor-shell { overflow: hidden; max-height: 5000px; opacity: 1; transform: translateY(0); transition: max-height .28s ease, opacity .2s ease, transform .2s ease; }
+    .editor-shell.editor-collapsed { max-height: 0; opacity: 0; transform: translateY(-6px); pointer-events: none; }
     .preview-bg { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; padding: 18px; background: rgba(23, 31, 30, .46); }
     .preview-bg.open { display: flex; }
     .preview-modal { width: min(980px, 100%); max-height: 92vh; overflow: auto; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 70px rgba(23, 31, 30, .28); }
     .preview-head { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; gap: 14px; align-items: start; padding: 16px 18px; background: #faf7ef; border-bottom: 1px solid var(--line); }
     .preview-body { padding: 18px; display: grid; gap: 16px; }
-    .preview-photo { width: 100%; aspect-ratio: 16 / 7; min-height: 260px; max-height: 360px; border-radius: 8px; background-size: cover; background-position: center; border: 1px solid var(--line); }
+    .preview-photo { width: 100%; aspect-ratio: 21 / 8; max-height: 360px; border-radius: 8px; background-size: cover; background-position: center; border: 1px solid var(--line); }
     .preview-info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
     .preview-info-item { background: #f8f5ed; border: 1px solid #e7decd; border-radius: 6px; padding: 10px; }
     .preview-info-item span { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
@@ -112,17 +114,33 @@
     <section id="adminPanel" class="hidden">
       <div class="panel">
         <div class="toolbar">
-          <button class="secondary" type="button" id="newTourBtn">新增空白行程</button>
+          <button class="secondary" type="button" id="newTourBtn">＋ 新增行程</button>
           <button class="ghost" type="button" id="loadToursBtn">重新讀取</button>
         </div>
         <div class="field" style="margin-top:12px">
           <label for="tourSelect">已儲存行程</label>
           <select id="tourSelect"></select>
+          <div class="hint" id="editorModeHint">請先選擇已儲存行程，或按「＋ 新增行程」。</div>
         </div>
       </div>
 
+      <div id="editorPanel" class="editor-shell editor-collapsed">
       <form class="panel" id="tourForm">
         <h2>行程基本資料</h2>
+        <div class="field">
+          <label for="region">行程地區</label>
+          <select id="region">
+            <option value=""></option>
+            <option value="北海道">北海道</option>
+            <option value="東北">東北</option>
+            <option value="關東">關東</option>
+            <option value="中部・北陸">中部・北陸</option>
+            <option value="關西">關西</option>
+            <option value="中國・四國">中國・四國</option>
+            <option value="九州・沖繩">九州・沖繩</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
         <div class="grid">
           <div class="field"><label for="title">大標題</label><input id="title" required></div>
           <div class="field"><label for="subtitle">副標題</label><input id="subtitle"></div>
@@ -191,11 +209,12 @@
 
       <section class="panel">
         <div class="toolbar">
-          <button class="primary" type="button" id="saveBtn">預覽行程</button>
+          <button class="primary" type="button" id="saveBtn">預覽／儲存修改</button>
           <button class="danger" type="button" id="deleteBtn">刪除這筆</button>
         </div>
         <p class="message" id="saveMessage"></p>
       </section>
+      </div>
     </section>
   </main>
 
@@ -225,6 +244,7 @@
     let savedTours = [];
     const pendingDayImageFiles = {};
     let hasUnsavedChanges = false;
+    const regionOrder = ["北海道", "東北", "關東", "中部・北陸", "關西", "中國・四國", "九州・沖繩", "其他"];
 
     for (let i = 1; i <= 10; i += 1) {
       const option = document.createElement("option");
@@ -256,6 +276,14 @@
         $("tourSelect").value = currentId || "";
         return;
       }
+      if (!$("tourSelect").value) {
+        hideEditor();
+        return;
+      }
+      if ($("tourSelect").value === "__new__") {
+        newTour(true);
+        return;
+      }
       const tour = savedTours.find((item) => item.id === $("tourSelect").value);
       if (tour) fillForm(tour);
     });
@@ -266,7 +294,7 @@
     });
 
     init();
-    watchEditableFields(document);
+    watchEditableFields($("editorPanel"));
     window.addEventListener("beforeunload", (event) => {
       if (!hasUnsavedChanges) return;
       event.preventDefault();
@@ -303,22 +331,73 @@
       const keepId = currentId;
       const { data, error } = await client.from("site_tours").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false });
       if (error) {
-        $("saveMessage").textContent = "讀取失敗。請確認資料表 SQL 已經執行。";
+        savedTours = [];
+        renderTourSelect();
+        hideEditor();
+        $("saveMessage").textContent = "目前讀不到資料庫，請稍後再試。";
         return;
       }
       savedTours = data || [];
-      $("tourSelect").innerHTML = savedTours.map((tour) => `<option value="${tour.id}">${tour.title}</option>`).join("");
-      const selected = savedTours.find((tour) => tour.id === keepId) || savedTours[0];
-      if (selected) fillForm(selected);
+      renderTourSelect();
+      if (keepId) {
+        const selected = savedTours.find((tour) => tour.id === keepId);
+        if (selected) fillForm(selected);
+      } else {
+        hideEditor();
+      }
     }
 
-    function newTour() {
-      if (!confirmLeaveUnsaved()) return;
+    function renderTourSelect() {
+      const groups = new Map(regionOrder.map((region) => [region, []]));
+      savedTours.forEach((tour) => {
+        const region = getTourRegion(tour);
+        if (!groups.has(region)) groups.set(region, []);
+        groups.get(region).push(tour);
+      });
+      $("tourSelect").innerHTML = `<option value="">請選擇行程</option><option value="__new__">＋ 新增行程</option>` + Array.from(groups.entries())
+        .filter(([, tours]) => tours.length)
+        .map(([region, tours]) => `<optgroup label="${escapeAttr(region)}">${tours.map((tour) => `<option value="${tour.id}">${escapeText(tour.title || "未命名行程")}</option>`).join("")}</optgroup>`)
+        .join("");
+      $("tourSelect").value = currentId || "";
+    }
+
+    function getTourRegion(tour) {
+      return tour.payload?.region || inferRegion(`${tour.title || ""} ${tour.subtitle || ""} ${tour.payload?.title || ""} ${tour.payload?.subtitle || ""}`);
+    }
+
+    function inferRegion(text) {
+      if (/北海道|札幌|函館|小樽|富良野|旭川|帶廣|釧路|知床/.test(text)) return "北海道";
+      if (/東北|青森|秋田|岩手|山形|宮城|福島|仙台|藏王|銀山/.test(text)) return "東北";
+      if (/關東|東京|千葉|埼玉|神奈川|橫濱|箱根|日光|茨城|栃木|群馬/.test(text)) return "關東";
+      if (/中部|北陸|名古屋|愛知|靜岡|山梨|長野|新潟|富山|石川|福井|岐阜|金澤|立山|白川鄉|高山/.test(text)) return "中部・北陸";
+      if (/關西|大阪|京都|奈良|兵庫|神戶|和歌山|滋賀|三重/.test(text)) return "關西";
+      if (/中國|四國|廣島|岡山|鳥取|島根|山口|香川|德島|愛媛|高知/.test(text)) return "中國・四國";
+      if (/九州|沖繩|福岡|佐賀|長崎|大分|熊本|宮崎|鹿兒島|那霸|石垣|別府|阿蘇|湯布院|人吉/.test(text)) return "九州・沖繩";
+      return "其他";
+    }
+
+    function newTour(skipConfirm = false) {
+      if (!skipConfirm && !confirmLeaveUnsaved()) return;
       currentId = null;
       $("tourForm").reset();
       $("daysCount").value = 5;
       renderDayEditors(5);
       $("saveMessage").textContent = "已建立空白編輯畫面，填好後按儲存。";
+      $("editorModeHint").textContent = "正在新增：空白行程";
+      if ($("tourSelect")) $("tourSelect").value = "__new__";
+      showEditor();
+      markClean();
+    }
+
+    function showEditor() {
+      $("editorPanel").classList.remove("editor-collapsed");
+    }
+
+    function hideEditor() {
+      currentId = null;
+      $("editorPanel").classList.add("editor-collapsed");
+      if ($("tourSelect")) $("tourSelect").value = "";
+      $("editorModeHint").textContent = "請先選擇已儲存行程，或按「＋ 新增行程」。";
       markClean();
     }
 
@@ -587,7 +666,7 @@
         ["價格", payload.price || "未填"]
       ];
       return `
-        <div class="preview-photo" style="${previewImageStyle(payload.image, payload.heroStyle)}"></div>
+        ${payload.image ? `<div class="preview-photo" style="${previewImageStyle(payload.image, payload.heroStyle)}"></div>` : ""}
         <div class="preview-info">
           ${info.map(([label, value]) => `<div class="preview-info-item"><span>${escapeText(label)}</span><strong>${escapeText(value)}</strong></div>`).join("")}
         </div>
@@ -629,6 +708,7 @@
     }
 
     function previewImageStyle(url, style = {}) {
+      if (!url) return "";
       const x = Number(style?.x ?? 50);
       const y = Number(style?.y ?? 50);
       const zoom = Number(style?.zoom ?? 100);
@@ -656,7 +736,8 @@
         payload
       };
       let result;
-      if (currentId) {
+      const isUpdatingSavedTour = Boolean(currentId);
+      if (isUpdatingSavedTour) {
         result = await client.from("site_tours").update(row).eq("id", currentId).select().single();
       } else {
         result = await client.from("site_tours").insert(row).select().single();
@@ -666,7 +747,7 @@
         return;
       }
       currentId = result.data.id;
-      $("saveMessage").textContent = "已儲存，可以到前台重新整理看看。";
+      $("saveMessage").textContent = isUpdatingSavedTour ? "已儲存修改，可以到前台重新整理看看。" : "已新增行程，可以到前台重新整理看看。";
       await loadTours();
       markClean();
     }
@@ -785,7 +866,7 @@
       currentId = null;
       $("saveMessage").textContent = "已刪除。";
       await loadTours();
-      newTour();
+      hideEditor();
     }
 
     function collectPayload() {
@@ -804,6 +885,7 @@
       ];
       return {
         title: $("title").value.trim(),
+        region: $("region").value,
         subtitle: $("subtitle").value.trim(),
         image: $("heroImage").value.trim(),
         heroStyle: collectHeroStyle(),
@@ -835,18 +917,17 @@
       const body = day[1] || "";
       const images = Array.isArray(day[2]) ? day[2] : day[2] ? [day[2]] : [];
       const imageStyles = Array.isArray(day[3]) ? day[3] : [];
-      const mealStart = body.indexOf("早餐：");
+      const mealStart = findMealStart(body);
       const detail = mealStart >= 0 ? body.slice(0, mealStart).trim() : body;
-      const meals = mealStart >= 0 ? body.slice(mealStart).trim().split("\n") : [];
       return {
         title: title.replace(/^Day\s*\d+\s*/i, ""),
         images,
         imageStyles,
         detail,
-        breakfast: cleanMeal(meals[0], "早餐："),
-        lunch: cleanMeal(meals[1], "午餐："),
-        dinner: cleanMeal(meals[2], "晚餐："),
-        hotel: cleanMeal(meals[3], "住宿：")
+        breakfast: extractMeal(body, "早餐"),
+        lunch: extractMeal(body, "午餐"),
+        dinner: extractMeal(body, "晚餐"),
+        hotel: extractMeal(body, "住宿")
       };
     }
 
@@ -861,8 +942,10 @@
     function fillForm(row) {
       currentId = row.id;
       if ($("tourSelect")) $("tourSelect").value = currentId || "";
+      showEditor();
       const payload = row.payload || {};
       $("title").value = payload.title || row.title || "";
+      setSelectValue("region", payload.region || getTourRegion(row));
       $("subtitle").value = payload.subtitle || row.subtitle || "";
       $("price").value = payload.price || row.price || "";
       $("heroImage").value = payload.image || row.hero_image || "";
@@ -873,6 +956,8 @@
       renderDayEditors(Number($("daysCount").value), days);
       fillFlights(payload.flights || []);
       updatePreview("heroPreview", $("heroImage").value, "hero");
+      $("editorModeHint").textContent = `正在編輯已儲存行程：${row.title || "未命名行程"}`;
+      $("saveMessage").textContent = "已載入儲存資料，可以直接編輯修改。";
       markClean();
     }
 
@@ -949,8 +1034,17 @@
       field.value = value || "";
     }
 
-    function cleanMeal(value, label) {
-      return (value || "").replace(label, "").trim();
+    function findMealStart(body) {
+      const indexes = ["早餐：", "午餐：", "晚餐：", "住宿："]
+        .map((label) => body.indexOf(label))
+        .filter((index) => index >= 0);
+      return indexes.length ? Math.min(...indexes) : -1;
+    }
+
+    function extractMeal(body, label) {
+      const pattern = new RegExp(`${label}：([\\s\\S]*?)(?=\\n(?:早餐|午餐|晚餐|住宿)：|$)`);
+      const match = body.match(pattern);
+      return match ? match[1].trim() : "";
     }
 
     function slugify(text) {
@@ -967,4 +1061,5 @@
   </script>
 </body>
 </html>
+
 
