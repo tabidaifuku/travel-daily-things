@@ -40,6 +40,7 @@
     .hero { min-height: 76vh; display: grid; grid-template-columns: 1.05fr .95fr; gap: 28px; align-items: center; }
     .eyebrow { color: var(--warm); font-weight: 800; letter-spacing: 0; margin-bottom: 12px; }
     h1 { font-size: clamp(38px, 7vw, 76px); line-height: 1; margin-bottom: 18px; letter-spacing: 0; }
+    h1 .headline-line { display: block; white-space: nowrap; }
     .lead { color: var(--muted); line-height: 1.9; font-size: 18px; max-width: 680px; }
     .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
     .primary { background: var(--green); color: white; box-shadow: 0 12px 24px rgba(15, 118, 110, .23); }
@@ -162,6 +163,7 @@
     @media (max-width: 560px) {
       .wrap { width: min(100% - 20px, 1120px); padding-top: 18px; }
       .two, .section-head { display: grid; grid-template-columns: 1fr; }
+      h1 { font-size: clamp(42px, 13vw, 54px); line-height: 1.08; }
       .hero { min-height: auto; padding-bottom: 12px; }
       .tour-grid { grid-template-columns: 1fr; }
       .day-collage { grid-template-columns: 1fr; }
@@ -175,7 +177,7 @@
     <section class="hero">
       <div>
         <p class="eyebrow">旅遊大小事</p>
-        <h1>日本旅行，<br>從一個想法開始。</h1>
+        <h1><span class="headline-line">日本旅行，</span><span class="headline-line">從一個想法開始。</span></h1>
         <p class="lead">訂房、訂車、訂餐、 and anything... 問我。</p>
         <div class="hero-actions">
           <button class="primary" type="button" onclick="scrollToTours()">看看行程</button>
