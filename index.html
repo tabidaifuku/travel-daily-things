@@ -341,14 +341,14 @@
       $("modalInfo").innerHTML = tour.info.map(([label, value]) => `<div class="info-item"><span>${label}</span><strong>${value}</strong></div>`).join("");
       $("modalFlights").innerHTML = renderFlights(tour.flights || []);
       $("modalHighlights").innerHTML = tour.highlights.map((item) => `<div class="highlight">${item}</div>`).join("");
-      $("modalDays").innerHTML = tour.days.map((day, index) => renderDay(day, index, tour.gallery || [tour.image])).join("");
+      $("modalDays").innerHTML = tour.days.map((day, index) => renderDay(day, index)).join("");
       $("modalNotice").textContent = tour.notice;
       $("formMessage").textContent = "";
       $("tourModal").classList.add("open");
       $("tourModal").setAttribute("aria-hidden", "false");
     }
 
-    function renderDay(day, index, images) {
+    function renderDay(day, index) {
       const title = day[0] || "";
       const body = day[1] || "";
       const dayImages = day[2] || [];
@@ -357,16 +357,16 @@
       const detail = mealStart >= 0 ? body.slice(0, mealStart).trim() : body.trim();
       const meals = mealStart >= 0 ? body.slice(mealStart).trim().split("\n").filter(Boolean) : [];
       const imageList = Array.isArray(dayImages) ? dayImages : dayImages ? [dayImages] : [];
-      const collageImages = [...imageList, ...images].slice(0, 3);
+      const collageImages = imageList.filter(Boolean).slice(0, 3);
       const routeTitle = title.replace(/^Day\s*\d+\s*/i, "");
       const detailId = `dayDetail${index}`;
       return `
         <div class="day">
           <div class="day-content">
             <div class="day-title"><span>第 ${index + 1} 天</span>${routeTitle}</div>
-            <div class="day-collage">
+            ${collageImages.length ? `<div class="day-collage">
               ${collageImages.map((image, imageIndex) => `<div class="day-photo" style="${imageStyle(image, dayImageStyles[imageIndex])}"></div>`).join("")}
-            </div>
+            </div>` : ""}
             <div class="detail-toggle"><button type="button" onclick="toggleDayDetail('${detailId}', this)">展開行程內容⌄</button></div>
             <div class="day-detail" id="${detailId}">${detail}</div>
             <div class="day-summary">
