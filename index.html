@@ -74,6 +74,7 @@
     .tour-body { padding: 16px; display: grid; gap: 12px; }
     .tour-body .primary { justify-self: start; min-width: 132px; max-width: 100%; }
     .tour-title { font-size: 20px; font-weight: 900; margin: 0; }
+    .tour-subtitle { margin: 0; overflow-wrap: anywhere; word-break: break-word; }
     .tags { display: flex; gap: 8px; flex-wrap: wrap; }
     .tag { display: inline-flex; align-items: center; min-height: 26px; padding: 0 9px; border-radius: 999px; background: var(--soft); color: var(--green-dark); font-size: 13px; font-weight: 700; }
     .price { font-size: 22px; font-weight: 900; color: var(--blue); }
@@ -246,7 +247,7 @@
           <div class="tour-body">
             <h3 class="tour-title">${name}</h3>
             <div class="tags"><span class="tag">行程小本本</span><span class="tag">${(tour.info?.[0]?.[1]) || "可詢問"}</span><span class="tag">可客製</span></div>
-            <p class="muted">${tour.subtitle || "喜歡這個行程可以先送出需求，後續會再聯繫確認。"}</p>
+            <p class="muted tour-subtitle">${tour.subtitle || "喜歡這個行程可以先送出需求，後續會再聯繫確認。"}</p>
             <div class="price">${tour.price || tour.info?.find(([label]) => label === "價格")?.[1] || "詢問後報價"}</div>
             <p class="small">參考價，實際報價依出發日、房型、航班與人數確認。</p>
             <button class="primary" type="button" onclick="selectTour('${name.replaceAll("'", "\\'")}')">我要詢問</button>
