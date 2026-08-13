@@ -1058,6 +1058,7 @@
               <div class="library-actions">
                 <button class="primary" type="button" onclick="chooseLibraryImage('${escapeJs(item.url)}')">使用</button>
                 <button class="secondary" type="button" onclick="saveImageLibraryItem('${escapeJs(item.key)}')">儲存標籤</button>
+                <button class="danger" type="button" onclick="removeImageLibraryItem('${escapeJs(item.key)}')">移除</button>
               </div>
             </div>
           </article>
@@ -1101,6 +1102,20 @@
       Object.assign(item, normalizeLibraryRow(data, item));
       alert("圖片標籤已儲存。");
       imageLibraryItems = await loadImageLibraryItems(false);
+      renderImageLibraryFilters();
+      renderImageLibraryGrid();
+    }
+
+    async function removeImageLibraryItem(key) {
+      const item = imageLibraryItems.find((entry) => entry.key === key);
+      if (!item) return;
+      if (!confirm("確定要從圖片庫移除這張圖片嗎？\n這不會刪除已上傳的原始圖片，也不會影響已使用這張圖的行程。")) return;
+      const { error } = await client.from("image_library").delete().eq("url", item.url);
+      if (error) {
+        alert(`移除失敗：${error.message}`);
+        return;
+      }
+      imageLibraryItems = imageLibraryItems.filter((entry) => entry.key !== key);
       renderImageLibraryFilters();
       renderImageLibraryGrid();
     }
