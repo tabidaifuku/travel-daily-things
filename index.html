@@ -37,24 +37,27 @@
     h1, h2, h3, p { margin-top: 0; }
 
     .wrap { width: min(1120px, calc(100% - 30px)); margin: 0 auto; padding: 26px 0 44px; }
-    .hero { min-height: 76vh; display: grid; grid-template-columns: 1.05fr .95fr; gap: 28px; align-items: center; }
+    .hero { min-height: 76vh; display: grid; grid-template-columns: .95fr 1.05fr; gap: 28px; align-items: center; }
     .eyebrow { color: var(--warm); font-weight: 800; letter-spacing: 0; margin-bottom: 12px; }
     h1 { font-size: clamp(38px, 7vw, 76px); line-height: 1; margin-bottom: 18px; letter-spacing: 0; }
     h1 .headline-line { display: block; white-space: nowrap; }
     .lead { color: var(--muted); line-height: 1.9; font-size: 18px; max-width: 680px; }
-    .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
     .primary { background: var(--green); color: white; box-shadow: 0 12px 24px rgba(15, 118, 110, .23); }
     .secondary { background: #eee9df; color: #313c39; border: 1px solid var(--line); }
     .ghost { background: transparent; border: 1px solid #bdd8d4; color: var(--green-dark); }
 
     .photo {
-      min-height: 430px;
+      aspect-ratio: 4 / 3;
+      min-height: 0;
+      width: min(100%, 620px);
+      justify-self: end;
       border-radius: 8px;
       background:
-        linear-gradient(160deg, rgba(15, 55, 68, .28), rgba(247, 243, 236, .12)),
-        url("https://prd-static.gltjp.com/glt/data/directory/14000/13656/20220912_164052_ea0c870a_w1920.jpg");
+        linear-gradient(160deg, rgba(255, 253, 248, .12), rgba(247, 243, 236, .08)),
+        url("assets/travel-doodle-hero-4x3-v2.png");
       background-size: cover;
       background-position: center;
+      background-repeat: no-repeat;
       box-shadow: var(--shadow);
       border: 1px solid rgba(255, 255, 255, .68);
     }
@@ -150,7 +153,7 @@
 
     @media (max-width: 920px) {
       .hero, .info-strip { grid-template-columns: 1fr; }
-      .photo { min-height: 300px; }
+      .photo { width: min(100%, 620px); justify-self: center; }
       .tour-hero-photo { aspect-ratio: 21 / 8; }
       .day-collage { grid-template-columns: 1fr 1fr; }
       .meal-grid { grid-template-columns: repeat(2, 1fr); }
@@ -165,6 +168,7 @@
       .two, .section-head { display: grid; grid-template-columns: 1fr; }
       h1 { font-size: clamp(42px, 13vw, 54px); line-height: 1.08; }
       .hero { min-height: auto; padding-bottom: 12px; }
+      .photo { aspect-ratio: 4 / 3; min-height: 0; width: 100%; max-width: 420px; justify-self: center; background-position: center center; }
       .tour-grid { grid-template-columns: 1fr; }
       .day-collage { grid-template-columns: 1fr; }
       .meal-grid { grid-template-columns: 1fr; }
@@ -179,19 +183,15 @@
         <p class="eyebrow">旅遊大小事</p>
         <h1><span class="headline-line">日本旅行，</span><span class="headline-line">從一個想法開始。</span></h1>
         <p class="lead">訂房、訂車、訂餐、 and anything... 問我。</p>
-        <div class="hero-actions">
-          <button class="primary" type="button" onclick="scrollToTours()">看看行程</button>
-          <button class="secondary" type="button" onclick="scrollToTours()">直接詢問</button>
-        </div>
       </div>
-      <div class="photo" aria-label="冬季旅遊印象圖"></div>
+      <div class="photo" aria-label="蠟筆塗鴉風旅行小物插圖"></div>
     </section>
 
     <section id="tours">
       <div class="section-head">
         <div class="modal-title-block">
           <h2>行程小本本</h2>
-          <p class="muted">先放幾個適合詢問的範例，價格為參考起價，實際安排會依日期、人數、飯店與機位調整。</p>
+          <p class="muted">想去的地方，從這裡開始。</p>
         </div>
       </div>
       <div class="tour-grid" id="tourGrid">
