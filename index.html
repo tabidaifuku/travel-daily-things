@@ -116,7 +116,8 @@
     .day-detail.open { display: block; }
     .field { margin-bottom: 12px; }
     .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .notice { border: 1px solid #e6cf9b; background: #fff8e8; border-radius: 8px; padding: 12px; line-height: 1.7; color: #65420a; }
+    .notice { border: 1px solid #e6cf9b; background: #fff8e8; border-radius: 8px; padding: 14px; line-height: 1.75; color: #65420a; white-space: pre-wrap; }
+    .notice h3 { margin: 0 0 8px; color: #6b4308; font-size: 18px; }
     .message { min-height: 22px; color: var(--green-dark); font-weight: 700; }
     .modal-bg { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; padding: 18px; background: rgba(23, 31, 30, .46); }
     .modal-bg.open { display: flex; }
@@ -298,6 +299,16 @@
 
     const $ = (id) => document.getElementById(id);
     const tours = {};
+    const defaultTravelNotice = [
+      "旅遊注意事項",
+      "・本行程內容為參考安排，實際航班、飯店、餐食與景點順序，會依出發日期、訂位狀況與當地實際情況調整。",
+      "・日本各地天候變化較大，請依季節準備合適衣物、雨具與方便行走的鞋子。",
+      "・部分景點、餐廳、交通或體驗活動，可能因天候、營業時間、預約狀況或現場管制而調整。",
+      "・若有素食、食物過敏、行動不便、嬰幼兒同行或其他特殊需求，請於報名前先告知，以便協助確認可安排內容。",
+      "・飯店房型、床型、吸菸／禁菸、樓層與相鄰房等需求，將盡力協助安排，但仍以飯店最終回覆為準。",
+      "・出發前請確認護照效期、簽證規定、入境規範與個人旅遊保險。",
+      "・行程報價會依出發日、航班、飯店、房型、人數與匯率等條件調整，實際內容與費用以最終確認單為準。"
+    ].join("\n");
     const sharedTourId = new URLSearchParams(location.search).get("tour");
     let currentTourName = "";
     let currentTour = null;
@@ -368,8 +379,8 @@
       $("modalFlights").innerHTML = renderFlights(tour.flights || []);
       $("modalHighlights").innerHTML = (tour.highlights || []).map((item) => `<div class="highlight">${item}</div>`).join("");
       $("modalDays").innerHTML = (tour.days || []).map((day, index) => renderDay(day, index)).join("");
-      $("modalNotice").textContent = tour.notice || "";
-      $("modalNotice").classList.toggle("hidden", !tour.notice);
+      $("modalNotice").innerHTML = renderNotice(tour.notice || defaultTravelNotice);
+      $("modalNotice").classList.remove("hidden");
       $("formMessage").textContent = "";
       $("tourModal").classList.add("open");
       $("tourModal").setAttribute("aria-hidden", "false");
@@ -433,6 +444,13 @@
       `;
     }
 
+    function renderNotice(text) {
+      const lines = String(text || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      if (!lines.length) return "";
+      const [title, ...items] = lines;
+      return `<h3>${escapeText(title)}</h3>${items.map((line) => escapeText(line)).join("\n")}`;
+    }
+
     function imageStyle(url, style = {}) {
       if (!url) return "";
       const x = Number(style.x ?? 50);
@@ -457,6 +475,13 @@
       return String(value ?? "")
         .replaceAll("&", "&amp;")
         .replaceAll('"', "&quot;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    }
+
+    function escapeText(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;");
     }
