@@ -406,13 +406,13 @@
         status: "新規詢問"
       };
 
-      const { data, error } = await client.from("direct_inquiries").insert(payload).select("id, created_at").single();
+      const { error } = await client.from("direct_inquiries").insert(payload);
       if (error) {
         $("formMessage").textContent = "目前送出失敗，請稍後再試，或直接聯繫我們。";
         return;
       }
 
-      notifyInquiryByEmail({ ...payload, ...data });
+      notifyInquiryByEmail({ ...payload, created_at: new Date().toISOString() });
       $("leadForm").reset();
       $("tourName").value = payload.tour_name;
       $("formMessage").textContent = "已送出，後續會再與你聯繫。";
