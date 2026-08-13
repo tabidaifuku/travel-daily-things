@@ -33,7 +33,8 @@
     .muted { color: var(--muted); line-height: 1.7; }
     .panel { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 18px; box-shadow: 0 12px 34px rgba(38, 31, 22, .08); margin-bottom: 14px; }
     .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .image-control-grid { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
     .field { margin-bottom: 12px; }
     .primary { background: var(--green); color: white; box-shadow: 0 10px 20px rgba(15, 118, 110, .2); }
     .secondary { background: #eee9df; color: #313c39; border: 1px solid var(--line); }
@@ -46,23 +47,44 @@
     .day-head h3 { margin: 0; color: #173e52; }
     .image-controls { border: 1px solid #e5ded3; border-radius: 8px; padding: 10px; background: #fffefa; }
     .image-controls h4 { margin: 0 0 8px; color: #173e52; }
-    .image-preview { border: 1px solid var(--line); border-radius: 8px; background: #eee9df; background-repeat: no-repeat; background-size: cover; background-position: center; margin-bottom: 10px; overflow: hidden; }
-    .hero-preview { aspect-ratio: 16 / 9; }
+    .image-preview { border: 1px solid var(--line); border-radius: 8px; background: #eee9df; background-repeat: no-repeat; background-size: cover; background-position: center; margin-bottom: 10px; overflow: hidden; cursor: grab; touch-action: none; user-select: none; }
+    .image-preview.empty { cursor: pointer; }
+    .image-preview.dragging { cursor: grabbing; }
+    .hero-preview { aspect-ratio: 21 / 8; max-height: 260px; }
     .day-preview { aspect-ratio: 4 / 3; }
     .image-preview.empty { display: grid; place-items: center; color: var(--muted); font-size: 13px; background-image: none !important; }
     .range-row { display: grid; grid-template-columns: 86px 1fr 44px; gap: 8px; align-items: center; margin-top: 8px; }
+    .range-row.hidden-control { display: none; }
     .range-row label { margin: 0; }
     input[type="range"] { padding: 0; }
-    .library { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 10px; }
-    .library button { min-height: 32px; padding: 0 10px; background: var(--soft); color: var(--green-dark); border: 1px solid #cde4e0; font-size: 13px; }
     .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .login-box { max-width: 460px; margin: 54px auto; }
     .hint { color: var(--muted); font-size: 12px; line-height: 1.6; margin-top: 6px; }
     .upload-status { color: var(--green-dark); font-size: 13px; font-weight: 800; line-height: 1.6; margin-top: 6px; }
+    .file-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; justify-content: start; }
+    .file-actions input[type="file"] { width: 100%; min-width: 0; font-size: 12px; }
+    .file-actions button { white-space: nowrap; }
+    .preview-bg { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; padding: 18px; background: rgba(23, 31, 30, .46); }
+    .preview-bg.open { display: flex; }
+    .preview-modal { width: min(980px, 100%); max-height: 92vh; overflow: auto; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 24px 70px rgba(23, 31, 30, .28); }
+    .preview-head { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; gap: 14px; align-items: start; padding: 16px 18px; background: #faf7ef; border-bottom: 1px solid var(--line); }
+    .preview-body { padding: 18px; display: grid; gap: 16px; }
+    .preview-photo { width: 100%; aspect-ratio: 16 / 7; min-height: 260px; max-height: 360px; border-radius: 8px; background-size: cover; background-position: center; border: 1px solid var(--line); }
+    .preview-info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .preview-info-item { background: #f8f5ed; border: 1px solid #e7decd; border-radius: 6px; padding: 10px; }
+    .preview-info-item span { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+    .preview-day { border-bottom: 1px solid #e4ded2; padding-bottom: 18px; line-height: 1.75; }
+    .preview-day:last-child { border-bottom: 0; }
+    .preview-day-title { margin-bottom: 10px; font-weight: 900; color: #173e52; }
+    .preview-collage { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+    .preview-day-photo { aspect-ratio: 4 / 3; border-radius: 8px; background-size: cover; background-position: center; border: 1px solid var(--line); }
+    .preview-text { white-space: pre-wrap; border-left: 3px solid var(--green); background: #fffefa; padding: 12px; border-radius: 6px; }
 
     @media (max-width: 780px) {
       .top, .grid, .grid-3 { grid-template-columns: 1fr; display: grid; }
       .top { align-items: start; }
+      .file-actions { grid-template-columns: 1fr; }
+      .preview-info, .preview-collage { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -109,19 +131,19 @@
           <div class="field"><label for="price">售價</label><input id="price" placeholder="NT$ 49,800 起"></div>
           <div class="field"><label for="daysCount">旅遊天數</label><select id="daysCount"></select></div>
         </div>
-        <div class="field"><label for="heroImage">主視覺照片網址</label><input id="heroImage"></div>
-        <div class="field">
-          <label for="heroImageFile">上傳主視覺照片</label>
-          <input id="heroImageFile" type="file" accept="image/jpeg,image/png,image/webp">
-          <div class="hint">可直接選 JPG / PNG / WebP，系統會自動填入上方照片網址。</div>
-          <div class="upload-status" id="heroUploadMessage"></div>
-        </div>
+        <input id="heroImage" type="hidden">
         <div class="image-controls">
-          <h4>主視覺顯示調整</h4>
-          <div class="image-preview hero-preview empty" id="heroPreview">尚未選擇圖片</div>
-          <div class="range-row"><label for="heroPosX">左右</label><input id="heroPosX" type="range" min="0" max="100" value="50" oninput="syncRangeValue('heroPosX')"><span id="heroPosXValue">50%</span></div>
-          <div class="range-row"><label for="heroPosY">上下</label><input id="heroPosY" type="range" min="0" max="100" value="50" oninput="syncRangeValue('heroPosY')"><span id="heroPosYValue">50%</span></div>
-          <div class="range-row"><label for="heroZoom">縮放</label><input id="heroZoom" type="range" min="100" max="180" value="100" oninput="syncRangeValue('heroZoom')"><span id="heroZoomValue">100%</span></div>
+          <h4>旅遊主題橫幅</h4>
+          <div class="image-preview hero-preview empty" id="heroPreview" data-file-input="heroImageFile">尚未選擇圖片</div>
+          <div class="file-actions">
+            <input id="heroImageFile" type="file" accept="image/jpeg,image/png,image/webp">
+            <button class="secondary" type="button" onclick="clearHeroImage()">刪除圖片</button>
+          </div>
+          <div class="hint">可直接拖曳圖片調整位置，滾動滑鼠滾輪可縮放。</div>
+          <div class="upload-status" id="heroUploadMessage"></div>
+          <div class="range-row hidden-control"><label for="heroPosX">左右</label><input id="heroPosX" type="range" min="0" max="100" value="50" oninput="syncRangeValue('heroPosX')"><span id="heroPosXValue">50%</span></div>
+          <div class="range-row hidden-control"><label for="heroPosY">上下</label><input id="heroPosY" type="range" min="0" max="100" value="50" oninput="syncRangeValue('heroPosY')"><span id="heroPosYValue">50%</span></div>
+          <div class="range-row hidden-control"><label for="heroZoom">縮放</label><input id="heroZoom" type="range" min="100" max="180" value="100" oninput="syncRangeValue('heroZoom')"><span id="heroZoomValue">100%</span></div>
         </div>
         <div class="field"><label for="notice">注意事項</label><textarea id="notice"></textarea></div>
 
@@ -130,33 +152,33 @@
           <div>
             <h3>去程</h3>
             <div class="grid">
-              <div class="field"><label for="outAirline">航空公司</label><input id="outAirline" value="星宇航空"></div>
-              <div class="field"><label for="outFlightNo">班機</label><input id="outFlightNo" value="JX862"></div>
+              <div class="field"><label for="outAirline">航空公司</label><select id="outAirline"><option value=""></option><option value="中華航空">中華航空</option><option value="長榮航空">長榮航空</option><option value="星宇航空">星宇航空</option><option value="國泰航空">國泰航空</option></select></div>
+              <div class="field"><label for="outFlightNo">班機</label><input id="outFlightNo"></div>
             </div>
-            <div class="field"><label for="outDate">日期欄位</label><input id="outDate" value="出發日期"></div>
+            <div class="field"><label for="outDate">日期欄位</label><input id="outDate"></div>
             <div class="grid">
-              <div class="field"><label for="outDepartPlace">出發機場</label><input id="outDepartPlace" value="桃園國際機場"></div>
-              <div class="field"><label for="outDepartTime">出發時間</label><input id="outDepartTime" value="11:50"></div>
+              <div class="field"><label for="outDepartPlace">出發機場</label><select id="outDepartPlace"><option value=""></option><option value="桃園國際機場">桃園國際機場</option><option value="高雄國際機場">高雄國際機場</option></select></div>
+              <div class="field"><label for="outDepartTime">出發時間</label><input id="outDepartTime"></div>
             </div>
             <div class="grid">
-              <div class="field"><label for="outArrivePlace">抵達機場</label><input id="outArrivePlace" value="仙台機場"></div>
-              <div class="field"><label for="outArriveTime">抵達時間</label><input id="outArriveTime" value="16:00"></div>
+              <div class="field"><label for="outArrivePlace">抵達機場</label><input id="outArrivePlace"></div>
+              <div class="field"><label for="outArriveTime">抵達時間</label><input id="outArriveTime"></div>
             </div>
           </div>
           <div>
             <h3>回程</h3>
             <div class="grid">
-              <div class="field"><label for="backAirline">航空公司</label><input id="backAirline" value="星宇航空"></div>
-              <div class="field"><label for="backFlightNo">班機</label><input id="backFlightNo" value="JX863"></div>
+              <div class="field"><label for="backAirline">航空公司</label><select id="backAirline"><option value=""></option><option value="中華航空">中華航空</option><option value="長榮航空">長榮航空</option><option value="星宇航空">星宇航空</option><option value="國泰航空">國泰航空</option></select></div>
+              <div class="field"><label for="backFlightNo">班機</label><input id="backFlightNo"></div>
             </div>
-            <div class="field"><label for="backDate">日期欄位</label><input id="backDate" value="回程日期"></div>
+            <div class="field"><label for="backDate">日期欄位</label><input id="backDate"></div>
             <div class="grid">
-              <div class="field"><label for="backDepartPlace">出發機場</label><input id="backDepartPlace" value="仙台機場"></div>
-              <div class="field"><label for="backDepartTime">出發時間</label><input id="backDepartTime" value="17:25"></div>
+              <div class="field"><label for="backDepartPlace">出發機場</label><input id="backDepartPlace"></div>
+              <div class="field"><label for="backDepartTime">出發時間</label><input id="backDepartTime"></div>
             </div>
             <div class="grid">
-              <div class="field"><label for="backArrivePlace">抵達機場</label><input id="backArrivePlace" value="桃園國際機場"></div>
-              <div class="field"><label for="backArriveTime">抵達時間</label><input id="backArriveTime" value="20:35"></div>
+              <div class="field"><label for="backArrivePlace">抵達機場</label><select id="backArrivePlace"><option value=""></option><option value="桃園國際機場">桃園國際機場</option><option value="高雄國際機場">高雄國際機場</option></select></div>
+              <div class="field"><label for="backArriveTime">抵達時間</label><input id="backArriveTime"></div>
             </div>
           </div>
         </div>
@@ -169,13 +191,29 @@
 
       <section class="panel">
         <div class="toolbar">
-          <button class="primary" type="button" id="saveBtn">儲存行程</button>
+          <button class="primary" type="button" id="saveBtn">預覽行程</button>
           <button class="danger" type="button" id="deleteBtn">刪除這筆</button>
         </div>
         <p class="message" id="saveMessage"></p>
       </section>
     </section>
   </main>
+
+  <div class="preview-bg" id="previewModal">
+    <section class="preview-modal">
+      <div class="preview-head">
+        <div>
+          <h2 id="previewTitle">行程預覽</h2>
+          <p class="muted" id="previewSubtitle"></p>
+        </div>
+        <div class="toolbar">
+          <button class="secondary" type="button" onclick="closePreview()">修改</button>
+          <button class="primary" type="button" onclick="confirmPublish()">確認上架</button>
+        </div>
+      </div>
+      <div class="preview-body" id="previewBody"></div>
+    </section>
+  </div>
 
   <script>
     const supabaseUrl = "https://awlrmtyynguetdsxswgc.supabase.co";
@@ -185,25 +223,8 @@
     const imageBucket = "itinerary-images";
     let currentId = null;
     let savedTours = [];
-
-    const imageLibrary = {
-      "藏王樹冰": [
-        "https://prd-static.gltjp.com/glt/data/directory/14000/13656/20220912_164052_ea0c870a_w1920.jpg"
-      ],
-      "仙台朝市": [
-        "https://cdn.4travel.jp/img/thumbnails/imk/travelogue_pict/73/41/96/650x_73419664.jpg?updated_at=1654051145"
-      ],
-      "銀山溫泉": [
-        "https://rimage.gnst.jp/livejapan.com/public/article/detail/a/30/00/a3000253/img/en/a3000253_parts_63d0cb8191b6b.jpg?20231121095000=&q=80"
-      ],
-      "天童溫泉": [
-        "https://images.trvl-media.com/lodging/17000000/16350000/16341600/16341512/6c74c406.jpg?impolicy=resizecrop&ra=fill&rh=575&rw=575"
-      ],
-      "城市／機場": [
-        "https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?auto=format&fit=crop&w=1200&q=80",
-        "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=900&q=80"
-      ]
-    };
+    const pendingDayImageFiles = {};
+    let hasUnsavedChanges = false;
 
     for (let i = 1; i <= 10; i += 1) {
       const option = document.createElement("option");
@@ -215,24 +236,45 @@
 
     $("loginBtn").addEventListener("click", login);
     $("loginPassword").addEventListener("keydown", (event) => { if (event.key === "Enter") login(); });
-    $("logoutBtn").addEventListener("click", async () => { await client.auth.signOut(); location.reload(); });
-    $("daysCount").addEventListener("change", () => renderDayEditors(Number($("daysCount").value)));
-    $("saveBtn").addEventListener("click", saveTour);
-    $("loadToursBtn").addEventListener("click", loadTours);
+    $("logoutBtn").addEventListener("click", async () => {
+      if (!confirmLeaveUnsaved()) return;
+      await client.auth.signOut();
+      location.reload();
+    });
+    $("daysCount").addEventListener("change", () => {
+      markDirty();
+      renderDayEditors(Number($("daysCount").value));
+    });
+    $("saveBtn").addEventListener("click", showPreview);
+    $("loadToursBtn").addEventListener("click", () => {
+      if (confirmLeaveUnsaved()) loadTours();
+    });
     $("newTourBtn").addEventListener("click", newTour);
     $("deleteBtn").addEventListener("click", deleteTour);
     $("tourSelect").addEventListener("change", () => {
+      if (!confirmLeaveUnsaved()) {
+        $("tourSelect").value = currentId || "";
+        return;
+      }
       const tour = savedTours.find((item) => item.id === $("tourSelect").value);
       if (tour) fillForm(tour);
     });
     $("heroImage").addEventListener("input", () => updatePreview("heroPreview", $("heroImage").value, "hero"));
     $("heroImageFile").addEventListener("change", () => previewSelectedFiles("heroImageFile", "heroPreview", "hero"));
+    $("previewModal").addEventListener("click", (event) => {
+      if (event.target === $("previewModal")) closePreview();
+    });
 
     init();
+    watchEditableFields(document);
+    window.addEventListener("beforeunload", (event) => {
+      if (!hasUnsavedChanges) return;
+      event.preventDefault();
+      event.returnValue = "資料尚未儲存，確定離開此頁？";
+    });
 
     async function init() {
       renderDayEditors(5);
-      fillDemo();
       const { data } = await client.auth.getSession();
       if (data.session) showAdmin();
     }
@@ -258,6 +300,7 @@
     }
 
     async function loadTours() {
+      const keepId = currentId;
       const { data, error } = await client.from("site_tours").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false });
       if (error) {
         $("saveMessage").textContent = "讀取失敗。請確認資料表 SQL 已經執行。";
@@ -265,16 +308,18 @@
       }
       savedTours = data || [];
       $("tourSelect").innerHTML = savedTours.map((tour) => `<option value="${tour.id}">${tour.title}</option>`).join("");
-      if (savedTours[0]) fillForm(savedTours[0]);
+      const selected = savedTours.find((tour) => tour.id === keepId) || savedTours[0];
+      if (selected) fillForm(selected);
     }
 
     function newTour() {
+      if (!confirmLeaveUnsaved()) return;
       currentId = null;
       $("tourForm").reset();
       $("daysCount").value = 5;
       renderDayEditors(5);
-      fillDemo();
       $("saveMessage").textContent = "已建立空白編輯畫面，填好後按儲存。";
+      markClean();
     }
 
     function renderDayEditors(count, days = []) {
@@ -287,21 +332,11 @@
         div.innerHTML = `
           <div class="day-head"><h3>Day ${i + 1}</h3></div>
           <div class="field"><label>當天行程標題</label><input id="dayTitle${i}" value="${escapeAttr(day.title || "")}"></div>
-          <div class="grid-3">
-            ${[0, 1, 2].map((n) => `<div class="field"><label>圖片 ${n + 1}</label><input id="dayImage${i}_${n}" value="${escapeAttr((day.images || [])[n] || "")}"></div>`).join("")}
-          </div>
-          <div class="grid-3">
+          ${[0, 1, 2].map((n) => `<input id="dayImage${i}_${n}" type="hidden" value="${escapeAttr((day.images || [])[n] || "")}">`).join("")}
+          <div class="grid-3 image-control-grid">
             ${[0, 1, 2].map((n) => imageControlHtml(i, n, styles[n])).join("")}
           </div>
-          <div class="field">
-            <label>上傳 Day ${i + 1} 圖片</label>
-            <input id="dayImageFiles${i}" type="file" accept="image/jpeg,image/png,image/webp" multiple>
-            <div class="hint">一次最多會放入空白的圖片欄位，最多顯示 3 張。</div>
-            <div class="upload-status" id="dayUploadMessage${i}"></div>
-          </div>
-          <div class="library">
-            ${Object.keys(imageLibrary).map((name) => `<button type="button" onclick="addLibraryImage(${i}, '${name}')">${name}</button>`).join("")}
-          </div>
+          <div class="upload-status" id="dayUploadMessage${i}"></div>
           <div class="field"><label>展開行程內容</label><textarea id="dayDetail${i}">${escapeText(day.detail || "")}</textarea></div>
           <div class="grid">
             <div class="field"><label>早餐</label><input id="dayBreakfast${i}" value="${escapeAttr(day.breakfast || "")}"></div>
@@ -314,10 +349,11 @@
         [0, 1, 2].forEach((n) => {
           $(`dayImage${i}_${n}`).addEventListener("input", () => updatePreview(`dayPreview${i}_${n}`, $(`dayImage${i}_${n}`).value, `dayImageStyle${i}_${n}`));
           updatePreview(`dayPreview${i}_${n}`, $(`dayImage${i}_${n}`).value, `dayImageStyle${i}_${n}`);
+        $(`dayImageFile${i}_${n}`).addEventListener("change", () => previewSlotSelectedFile(i, n));
         });
-        $(`dayImageFiles${i}`).addEventListener("change", () => previewSelectedFiles(`dayImageFiles${i}`, null, null, i));
       }
       updatePreview("heroPreview", $("heroImage").value, "hero");
+      watchEditableFields($("daysArea"));
     }
 
     function imageControlHtml(dayIndex, imageIndex, style = {}) {
@@ -328,10 +364,15 @@
       return `
         <div class="image-controls">
           <h4>圖片 ${imageIndex + 1} 顯示調整</h4>
-          <div class="image-preview day-preview empty" id="dayPreview${dayIndex}_${imageIndex}">尚未選擇圖片</div>
-          <div class="range-row"><label for="${prefix}X">左右</label><input id="${prefix}X" type="range" min="0" max="100" value="${x}" oninput="syncRangeValue('${prefix}X')"><span id="${prefix}XValue">${x}%</span></div>
-          <div class="range-row"><label for="${prefix}Y">上下</label><input id="${prefix}Y" type="range" min="0" max="100" value="${y}" oninput="syncRangeValue('${prefix}Y')"><span id="${prefix}YValue">${y}%</span></div>
-          <div class="range-row"><label for="${prefix}Zoom">縮放</label><input id="${prefix}Zoom" type="range" min="100" max="180" value="${zoom}" oninput="syncRangeValue('${prefix}Zoom')"><span id="${prefix}ZoomValue">${zoom}%</span></div>
+          <div class="image-preview day-preview empty" id="dayPreview${dayIndex}_${imageIndex}" data-file-input="dayImageFile${dayIndex}_${imageIndex}">尚未選擇圖片</div>
+          <div class="file-actions">
+            <input id="dayImageFile${dayIndex}_${imageIndex}" type="file" accept="image/jpeg,image/png,image/webp">
+            <button class="secondary" type="button" onclick="clearDayImage(${dayIndex}, ${imageIndex})">刪除圖片</button>
+          </div>
+          <div class="hint">可拖曳調整位置，滾輪可縮放。</div>
+          <div class="range-row hidden-control"><label for="${prefix}X">左右</label><input id="${prefix}X" type="range" min="0" max="100" value="${x}" oninput="syncRangeValue('${prefix}X')"><span id="${prefix}XValue">${x}%</span></div>
+          <div class="range-row hidden-control"><label for="${prefix}Y">上下</label><input id="${prefix}Y" type="range" min="0" max="100" value="${y}" oninput="syncRangeValue('${prefix}Y')"><span id="${prefix}YValue">${y}%</span></div>
+          <div class="range-row hidden-control"><label for="${prefix}Zoom">縮放</label><input id="${prefix}Zoom" type="range" min="100" max="180" value="${zoom}" oninput="syncRangeValue('${prefix}Zoom')"><span id="${prefix}ZoomValue">${zoom}%</span></div>
         </div>
       `;
     }
@@ -365,7 +406,9 @@
     function updatePreview(previewId, url, stylePrefix) {
       const preview = $(previewId);
       if (!preview) return;
-      const src = url || preview.dataset.localUrl || "";
+      attachPreviewGestures(previewId, stylePrefix);
+      if (url && !url.startsWith("blob:")) preview.dataset.previewSrc = url;
+      const src = preview.dataset.localUrl || url || preview.dataset.previewSrc || "";
       if (!src) {
         preview.classList.add("empty");
         preview.textContent = "尚未選擇圖片";
@@ -380,6 +423,87 @@
       preview.style.backgroundSize = size;
     }
 
+    function attachPreviewGestures(previewId, stylePrefix) {
+      const preview = $(previewId);
+      if (!preview || preview.dataset.gestureReady) return;
+      preview.dataset.gestureReady = "true";
+      let startX = 0;
+      let startY = 0;
+      let startStyle = null;
+
+      preview.addEventListener("pointerdown", (event) => {
+        if (preview.classList.contains("empty")) {
+          const inputId = preview.dataset.fileInput;
+          if (inputId && $(inputId)) $(inputId).click();
+          return;
+        }
+        event.preventDefault();
+        startX = event.clientX;
+        startY = event.clientY;
+        startStyle = getStyleValues(stylePrefix);
+        preview.classList.add("dragging");
+        preview.setPointerCapture(event.pointerId);
+      });
+
+      preview.addEventListener("pointermove", (event) => {
+        if (!startStyle) return;
+        const rect = preview.getBoundingClientRect();
+        const dx = ((event.clientX - startX) / rect.width) * 100;
+        const dy = ((event.clientY - startY) / rect.height) * 100;
+        setStyleValues(stylePrefix, {
+          x: clamp(startStyle.x - dx, 0, 100),
+          y: clamp(startStyle.y - dy, 0, 100),
+          zoom: startStyle.zoom
+        });
+        updatePreview(previewId, "", stylePrefix);
+        markDirty();
+      });
+
+      preview.addEventListener("pointerup", (event) => {
+        startStyle = null;
+        preview.classList.remove("dragging");
+        if (preview.hasPointerCapture(event.pointerId)) preview.releasePointerCapture(event.pointerId);
+      });
+
+      preview.addEventListener("pointercancel", () => {
+        startStyle = null;
+        preview.classList.remove("dragging");
+      });
+
+      preview.addEventListener("wheel", (event) => {
+        if (preview.classList.contains("empty")) return;
+        event.preventDefault();
+        const current = getStyleValues(stylePrefix);
+        const step = event.deltaY > 0 ? -5 : 5;
+        setStyleValues(stylePrefix, {
+          ...current,
+          zoom: clamp(current.zoom + step, 100, 180)
+        });
+        updatePreview(previewId, "", stylePrefix);
+        markDirty();
+      }, { passive: false });
+    }
+
+    function getStyleValues(prefix) {
+      if (prefix === "hero") return collectHeroStyle();
+      return collectImageStyle(prefix);
+    }
+
+    function setStyleValues(prefix, style) {
+      const idPrefix = prefix === "hero" ? "heroPos" : prefix;
+      [["X", style.x], ["Y", style.y], ["Zoom", style.zoom]].forEach(([suffix, value]) => {
+        const id = `${idPrefix}${suffix}`;
+        if ($(id)) {
+          $(id).value = Math.round(value);
+          syncRangeValue(id);
+        }
+      });
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
     function previewSelectedFiles(inputId, previewId, stylePrefix, dayIndex = null) {
       const files = Array.from($(inputId)?.files || []);
       if (!files.length) return;
@@ -389,6 +513,7 @@
         if (preview?.dataset.localUrl) URL.revokeObjectURL(preview.dataset.localUrl);
         preview.dataset.localUrl = url;
         updatePreview(previewId, url, stylePrefix);
+        markDirty();
         return;
       }
       const slots = [0, 1, 2].filter((index) => !$(`dayImage${dayIndex}_${index}`).value.trim());
@@ -402,21 +527,113 @@
         if (preview.dataset.localUrl) URL.revokeObjectURL(preview.dataset.localUrl);
         preview.dataset.localUrl = url;
         target.value = "";
+        pendingDayImageFiles[`${dayIndex}_${index}`] = file;
         updatePreview(`dayPreview${dayIndex}_${index}`, url, `dayImageStyle${dayIndex}_${index}`);
+        markDirty();
       });
+      $(inputId).value = "";
     }
 
-    function addLibraryImage(dayIndex, category) {
-      const urls = imageLibrary[category] || [];
-      const url = urls[0] || "";
-      for (let i = 0; i < 3; i += 1) {
-        const input = $(`dayImage${dayIndex}_${i}`);
-        if (input && !input.value) {
-          input.value = url;
-          return;
-        }
-      }
-      $(`dayImage${dayIndex}_0`).value = url;
+    function previewSlotSelectedFile(dayIndex, imageIndex) {
+      const input = $(`dayImageFile${dayIndex}_${imageIndex}`);
+      const file = input?.files?.[0];
+      if (!file) return;
+      pendingDayImageFiles[`${dayIndex}_${imageIndex}`] = file;
+      const preview = $(`dayPreview${dayIndex}_${imageIndex}`);
+      const url = URL.createObjectURL(file);
+      if (preview.dataset.localUrl) URL.revokeObjectURL(preview.dataset.localUrl);
+      preview.dataset.localUrl = url;
+      $(`dayImage${dayIndex}_${imageIndex}`).value = "";
+      updatePreview(`dayPreview${dayIndex}_${imageIndex}`, url, `dayImageStyle${dayIndex}_${imageIndex}`);
+      markDirty();
+    }
+
+    function showPreview() {
+      const payload = collectPreviewPayload();
+      $("previewTitle").textContent = payload.title || "未填大標題";
+      $("previewSubtitle").textContent = payload.subtitle || "";
+      $("previewBody").innerHTML = renderPreview(payload);
+      $("previewModal").classList.add("open");
+    }
+
+    function closePreview() {
+      $("previewModal").classList.remove("open");
+    }
+
+    async function confirmPublish() {
+      closePreview();
+      await saveTour();
+    }
+
+    function collectPreviewPayload() {
+      const payload = collectPayload();
+      payload.image = getPreviewImage("heroPreview", payload.image);
+      payload.days = payload.days.map((day, dayIndex) => {
+        const images = [0, 1, 2].map((imageIndex) => getPreviewImage(`dayPreview${dayIndex}_${imageIndex}`, day[2][imageIndex] || "")).filter(Boolean);
+        return [day[0], day[1], images, day[3]];
+      });
+      payload.gallery = payload.days.flatMap((day) => day[2]).filter(Boolean);
+      return payload;
+    }
+
+    function getPreviewImage(previewId, fallback = "") {
+      const preview = $(previewId);
+      return preview?.dataset.localUrl || preview?.dataset.previewSrc || fallback || "";
+    }
+
+    function renderPreview(payload) {
+      const info = [
+        ["天數", `${$("daysCount").value}天`],
+        ["價格", payload.price || "未填"]
+      ];
+      return `
+        <div class="preview-photo" style="${previewImageStyle(payload.image, payload.heroStyle)}"></div>
+        <div class="preview-info">
+          ${info.map(([label, value]) => `<div class="preview-info-item"><span>${escapeText(label)}</span><strong>${escapeText(value)}</strong></div>`).join("")}
+        </div>
+        ${renderPreviewFlights(payload.flights)}
+        <div>
+        ${payload.days.map((day, index) => renderPreviewDay(day, index)).join("")}
+        </div>
+        ${payload.notice ? `<div class="preview-text">${escapeText(payload.notice)}</div>` : ""}
+      `;
+    }
+
+    function renderPreviewFlights(flights) {
+      const rows = (flights || []).filter((flight) => Object.values(flight).some(Boolean));
+      if (!rows.length) return "";
+      return `<div class="panel" style="box-shadow:none;margin:0"><h3>參考航班</h3>${rows.map((flight) => `
+        <div class="preview-info-item" style="margin-top:8px">
+          <strong>${escapeText(flight.type || "")} ${escapeText(flight.airline || "")} ${escapeText(flight.flightNo || "")}</strong>
+          <div class="muted">${escapeText(flight.date || "")}　${escapeText(flight.departPlace || "")} ${escapeText(flight.departTime || "")} → ${escapeText(flight.arrivePlace || "")} ${escapeText(flight.arriveTime || "")}</div>
+        </div>
+      `).join("")}</div>`;
+    }
+
+    function renderPreviewDay(day, index) {
+      const title = (day[0] || "").replace(/^Day\s*\d+\s*/i, "");
+      const body = day[1] || "";
+      const mealStart = body.indexOf("早餐：");
+      const detail = mealStart >= 0 ? body.slice(0, mealStart).trim() : body.trim();
+      const meals = mealStart >= 0 ? body.slice(mealStart).trim() : "";
+      const imageList = (day[2] || []).filter(Boolean).slice(0, 3);
+      const styles = Array.isArray(day[3]) ? day[3] : [];
+      return `
+        <section class="preview-day">
+          <div class="preview-day-title">第 ${index + 1} 天　${escapeText(title || "未填行程標題")}</div>
+          ${imageList.length ? `<div class="preview-collage">${imageList.map((image, imageIndex) => `<div class="preview-day-photo" style="${previewImageStyle(image, styles[imageIndex])}"></div>`).join("")}</div>` : ""}
+          ${detail ? `<div class="preview-text">${escapeText(detail)}</div>` : ""}
+          ${meals ? `<div class="preview-text" style="margin-top:8px">${escapeText(meals)}</div>` : ""}
+        </section>
+      `;
+    }
+
+    function previewImageStyle(url, style = {}) {
+      const x = Number(style?.x ?? 50);
+      const y = Number(style?.y ?? 50);
+      const zoom = Number(style?.zoom ?? 100);
+      const size = zoom === 100 ? "cover" : `${zoom}%`;
+      return `background-image:url('${String(url || "").replaceAll("'", "\\'")}');background-position:${x}% ${y}%;background-size:${size};`;
     }
 
     async function saveTour() {
@@ -451,19 +668,31 @@
       currentId = result.data.id;
       $("saveMessage").textContent = "已儲存，可以到前台重新整理看看。";
       await loadTours();
+      markClean();
     }
 
     async function uploadPendingTourImages() {
       const uploadKey = currentId || slugify($("title").value || "new-tour") || `tour-${Date.now()}`;
       if ($("heroImageFile").files.length) {
         const urls = await uploadFiles("heroImageFile", `tours/${uploadKey}/hero`, "heroUploadMessage");
-        if (urls[0]) $("heroImage").value = urls[0];
+        if (urls[0]) {
+          $("heroImage").value = urls[0];
+          clearLocalPreview("heroPreview");
+          updatePreview("heroPreview", urls[0], "hero");
+        }
       }
       for (let i = 0; i < Number($("daysCount").value); i += 1) {
-        const input = $(`dayImageFiles${i}`);
-        if (!input || !input.files.length) continue;
-        const urls = await uploadFiles(`dayImageFiles${i}`, `tours/${uploadKey}/day-${i + 1}`, `dayUploadMessage${i}`);
-        urls.forEach((url) => addUploadedDayImage(i, url));
+        for (let n = 0; n < 3; n += 1) {
+          const file = pendingDayImageFiles[`${i}_${n}`];
+          if (!file) continue;
+          const urls = await uploadFileList([file], `tours/${uploadKey}/day-${i + 1}`, `dayUploadMessage${i}`);
+          if (urls[0]) {
+            $(`dayImage${i}_${n}`).value = urls[0];
+            clearLocalPreview(`dayPreview${i}_${n}`);
+            updatePreview(`dayPreview${i}_${n}`, urls[0], `dayImageStyle${i}_${n}`);
+          }
+          delete pendingDayImageFiles[`${i}_${n}`];
+        }
       }
     }
 
@@ -478,9 +707,45 @@
       $(`dayImage${dayIndex}_0`).value = url;
     }
 
+    function clearLocalPreview(previewId) {
+      const preview = $(previewId);
+      if (!preview) return;
+      if (preview.dataset.localUrl) URL.revokeObjectURL(preview.dataset.localUrl);
+      delete preview.dataset.localUrl;
+      delete preview.dataset.previewSrc;
+    }
+
+    function clearHeroImage() {
+      $("heroImage").value = "";
+      $("heroImageFile").value = "";
+      clearLocalPreview("heroPreview");
+      setImageStyle("hero", { x: 50, y: 50, zoom: 100 });
+      updatePreview("heroPreview", "", "hero");
+      $("heroUploadMessage").textContent = "";
+      markDirty();
+    }
+
+    function clearDayImage(dayIndex, imageIndex) {
+      const key = `${dayIndex}_${imageIndex}`;
+      delete pendingDayImageFiles[key];
+      $(`dayImage${dayIndex}_${imageIndex}`).value = "";
+      $(`dayImageFile${dayIndex}_${imageIndex}`).value = "";
+      clearLocalPreview(`dayPreview${dayIndex}_${imageIndex}`);
+      setImageStyle(`dayImageStyle${dayIndex}_${imageIndex}`, { x: 50, y: 50, zoom: 100 });
+      updatePreview(`dayPreview${dayIndex}_${imageIndex}`, "", `dayImageStyle${dayIndex}_${imageIndex}`);
+      $(`dayUploadMessage${dayIndex}`).textContent = "";
+      markDirty();
+    }
+
     async function uploadFiles(inputId, folder, messageId) {
       const input = $(inputId);
       const files = Array.from(input?.files || []);
+      const urls = await uploadFileList(files, folder, messageId);
+      input.value = "";
+      return urls;
+    }
+
+    async function uploadFileList(files, folder, messageId) {
       const urls = [];
       const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
       const maxSize = 5 * 1024 * 1024;
@@ -501,7 +766,6 @@
         urls.push(data.publicUrl);
       }
       $(messageId).textContent = `已上傳 ${files.length} 張圖片。`;
-      input.value = "";
       return urls;
     }
 
@@ -596,6 +860,7 @@
 
     function fillForm(row) {
       currentId = row.id;
+      if ($("tourSelect")) $("tourSelect").value = currentId || "";
       const payload = row.payload || {};
       $("title").value = payload.title || row.title || "";
       $("subtitle").value = payload.subtitle || row.subtitle || "";
@@ -608,6 +873,7 @@
       renderDayEditors(Number($("daysCount").value), days);
       fillFlights(payload.flights || []);
       updatePreview("heroPreview", $("heroImage").value, "hero");
+      markClean();
     }
 
     function setImageStyle(prefix, style = {}) {
@@ -626,6 +892,27 @@
       });
     }
 
+    function markDirty() {
+      hasUnsavedChanges = true;
+    }
+
+    function markClean() {
+      hasUnsavedChanges = false;
+    }
+
+    function confirmLeaveUnsaved() {
+      return !hasUnsavedChanges || confirm("資料尚未儲存，確定離開此頁？");
+    }
+
+    function watchEditableFields(root = document) {
+      root.querySelectorAll("input, textarea, select").forEach((element) => {
+        if (element.dataset.dirtyWatcher) return;
+        element.dataset.dirtyWatcher = "true";
+        element.addEventListener("input", markDirty);
+        element.addEventListener("change", markDirty);
+      });
+    }
+
     function fillFlights(flights) {
       const out = flights[0] || {};
       const back = flights[1] || {};
@@ -634,21 +921,32 @@
     }
 
     function setFlight(prefix, flight) {
-      $(`${prefix}Airline`).value = flight.airline || "星宇航空";
+      setSelectValue(`${prefix}Airline`, flight.airline || "");
       $(`${prefix}FlightNo`).value = flight.flightNo || "";
-      $(`${prefix}Date`).value = flight.date || (prefix === "out" ? "出發日期" : "回程日期");
-      $(`${prefix}DepartPlace`).value = flight.departPlace || "";
+      $(`${prefix}Date`).value = flight.date || "";
+      setAirportValue(`${prefix}DepartPlace`, flight.departPlace || "");
       $(`${prefix}DepartTime`).value = flight.departTime || "";
-      $(`${prefix}ArrivePlace`).value = flight.arrivePlace || "";
+      setAirportValue(`${prefix}ArrivePlace`, flight.arrivePlace || "");
       $(`${prefix}ArriveTime`).value = flight.arriveTime || "";
     }
 
-    function fillDemo() {
-      $("title").value = "東北五日｜藏王樹冰・銀山溫泉・松島海岸";
-      $("subtitle").value = "冬季限定｜5日｜參考價 NT$ 49,800 起";
-      $("price").value = "NT$ 49,800 起";
-      $("heroImage").value = "https://prd-static.gltjp.com/glt/data/directory/14000/13656/20220912_164052_ea0c870a_w1920.jpg";
-      $("notice").value = "冬季景點會受天候、道路、纜車運行狀況影響；正式內容以實際確認後安排為準。";
+    function setSelectValue(id, value) {
+      const select = $(id);
+      if (!select) return;
+      if (value && !Array.from(select.options).some((option) => option.value === value)) {
+        select.appendChild(new Option(value, value));
+      }
+      select.value = value || "";
+    }
+
+    function setAirportValue(id, value) {
+      const field = $(id);
+      if (!field) return;
+      if (field.tagName === "SELECT") {
+        setSelectValue(id, value);
+        return;
+      }
+      field.value = value || "";
     }
 
     function cleanMeal(value, label) {
@@ -669,3 +967,4 @@
   </script>
 </body>
 </html>
+
