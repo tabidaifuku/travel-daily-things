@@ -81,12 +81,18 @@
     .preview-collage { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
     .preview-day-photo { aspect-ratio: 4 / 3; border-radius: 8px; background-size: cover; background-position: center; border: 1px solid var(--line); }
     .preview-text { white-space: pre-wrap; border-left: 3px solid var(--green); background: #fffefa; padding: 12px; border-radius: 6px; }
-    .library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; padding: 18px; }
-    .library-item { min-height: 118px; border: 1px solid var(--line); border-radius: 8px; background-size: cover; background-position: center; box-shadow: inset 0 0 0 1px rgba(255,255,255,.55); }
+    .library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; padding: 18px; }
+    .library-card { border: 1px solid var(--line); border-radius: 8px; background: #fffefa; overflow: hidden; }
+    .library-thumb { width: 100%; aspect-ratio: 4 / 3; border: 0; background-size: cover; background-position: center; display: block; cursor: pointer; }
+    .library-edit { padding: 10px; display: grid; gap: 8px; }
+    .library-edit label { margin-bottom: 3px; }
+    .library-edit input, .library-edit select, .library-edit textarea { padding: 8px; font-size: 13px; }
+    .library-edit textarea { min-height: 58px; }
+    .library-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .library-actions button { min-height: 34px; font-size: 13px; }
     .library-empty { padding: 24px 18px; color: var(--muted); line-height: 1.7; }
     .library-filters { display: grid; grid-template-columns: minmax(160px, 220px) minmax(160px, 220px) 1fr; gap: 10px; align-items: end; padding: 14px 18px; border-bottom: 1px solid var(--line); background: #faf7ef; }
     .library-count { color: var(--muted); font-size: 13px; font-weight: 800; padding-bottom: 10px; }
-    .library-caption { display: block; width: 100%; min-height: 30px; margin-top: 88px; padding: 5px 7px; border-radius: 0 0 7px 7px; background: rgba(255, 253, 248, .9); color: #26302f; font-size: 12px; line-height: 1.35; text-align: left; }
 
     @media (max-width: 780px) {
       .top, .grid, .grid-3 { grid-template-columns: 1fr; display: grid; }
@@ -941,9 +947,11 @@
       $(`dayImage${dayIndex}_0`).value = url;
     }
 
-    function openImageLibrary(type, dayIndex = null, imageIndex = null) {
+    async function openImageLibrary(type, dayIndex = null, imageIndex = null) {
       imageLibraryTarget = { type, dayIndex, imageIndex };
-      imageLibraryItems = collectImageLibraryItems();
+      $("imageLibraryBody").innerHTML = `<div class="library-empty">圖片庫讀取中...</div>`;
+      $("imageLibraryModal").classList.add("open");
+      imageLibraryItems = await loadImageLibraryItems();
       if (!imageLibraryItems.length) {
         $("imageLibraryBody").innerHTML = `<div class="library-empty">目前還沒有可重複使用的圖片。先儲存一筆有圖片的行程後，這裡就會出現圖片。</div>`;
       } else {
@@ -964,7 +972,6 @@
         renderImageLibraryFilters();
         renderImageLibraryGrid();
       }
-      $("imageLibraryModal").classList.add("open");
     }
 
     function closeImageLibrary() {
@@ -1023,17 +1030,132 @@
       $("libraryCount").textContent = `共 ${items.length} 張圖片`;
       $("libraryGridArea").innerHTML = items.length
         ? `<div class="library-grid">${items.map((item) => `
-          <button class="library-item" type="button" style="${previewImageStyle(item.url)}" onclick="chooseLibraryImage('${escapeJs(item.url)}')" aria-label="選擇圖片">
-            <span class="library-caption">${escapeText(item.region)}／${escapeText(item.prefecture)}<br>${escapeText(item.title || "圖片")}</span>
-          </button>
+          <article class="library-card">
+            <button class="library-thumb" type="button" style="${previewImageStyle(item.url)}" onclick="chooseLibraryImage('${escapeJs(item.url)}')" aria-label="使用這張圖片"></button>
+            <div class="library-edit">
+              <div>
+                <label for="libraryTitle${escapeAttr(item.key)}">圖片名稱</label>
+                <input id="libraryTitle${escapeAttr(item.key)}" value="${escapeAttr(item.title || "")}" placeholder="例：藏王樹冰纜車">
+              </div>
+              <div class="grid">
+                <div>
+                  <label for="libraryRegion${escapeAttr(item.key)}">地區</label>
+                  <select id="libraryRegion${escapeAttr(item.key)}" onchange="syncLibraryPrefectureOptions('${escapeJs(item.key)}')">${regionOptions(item.region)}</select>
+                </div>
+                <div>
+                  <label for="libraryPrefecture${escapeAttr(item.key)}">細項</label>
+                  <select id="libraryPrefecture${escapeAttr(item.key)}">${prefectureOptions(item.region, item.prefecture)}</select>
+                </div>
+              </div>
+              <div>
+                <label for="libraryNote${escapeAttr(item.key)}">備註</label>
+                <textarea id="libraryNote${escapeAttr(item.key)}" placeholder="例：冬季、親子、自然景觀">${escapeText(item.note || "")}</textarea>
+              </div>
+              <label style="display:flex;gap:8px;align-items:center;margin:0">
+                <input id="libraryFavorite${escapeAttr(item.key)}" type="checkbox" style="width:auto" ${item.is_favorite ? "checked" : ""}>
+                常用圖片
+              </label>
+              <div class="library-actions">
+                <button class="primary" type="button" onclick="chooseLibraryImage('${escapeJs(item.url)}')">使用</button>
+                <button class="secondary" type="button" onclick="saveImageLibraryItem('${escapeJs(item.key)}')">儲存標籤</button>
+              </div>
+            </div>
+          </article>
         `).join("")}</div>`
         : `<div class="library-empty">這個分類目前沒有圖片。</div>`;
+    }
+
+    function regionOptions(current) {
+      return regionOrder.map((region) => `<option value="${escapeAttr(region)}"${region === current ? " selected" : ""}>${escapeText(region)}</option>`).join("");
+    }
+
+    function prefectureOptions(region, current) {
+      const options = prefectureGroups[region] || ["未分類"];
+      const list = options.includes(current) ? options : [...options, current || "未分類"];
+      return list.map((name) => `<option value="${escapeAttr(name)}"${name === current ? " selected" : ""}>${escapeText(name)}</option>`).join("");
+    }
+
+    function syncLibraryPrefectureOptions(key) {
+      const region = $(`libraryRegion${key}`).value;
+      const prefecture = $(`libraryPrefecture${key}`);
+      prefecture.innerHTML = prefectureOptions(region, prefecture.value);
+    }
+
+    async function saveImageLibraryItem(key) {
+      const item = imageLibraryItems.find((entry) => entry.key === key);
+      if (!item) return;
+      const payload = {
+        url: item.url,
+        region: $(`libraryRegion${key}`).value || "其他",
+        prefecture: $(`libraryPrefecture${key}`).value || "未分類",
+        title: $(`libraryTitle${key}`).value.trim(),
+        note: $(`libraryNote${key}`).value.trim(),
+        is_favorite: $(`libraryFavorite${key}`).checked,
+        updated_at: new Date().toISOString()
+      };
+      const { data, error } = await client.from("image_library").upsert(payload, { onConflict: "url" }).select().single();
+      if (error) {
+        alert(`儲存失敗：${error.message}\n如果還沒跑 setup-image-library.sql，請先到 Supabase SQL Editor 執行。`);
+        return;
+      }
+      Object.assign(item, normalizeLibraryRow(data, item));
+      alert("圖片標籤已儲存。");
+      imageLibraryItems = await loadImageLibraryItems(false);
+      renderImageLibraryFilters();
+      renderImageLibraryGrid();
     }
 
     function getPrefectureOrder(region, prefecture) {
       const list = prefectureGroups[region] || Object.values(prefectureGroups).flat();
       const index = list.indexOf(prefecture);
       return index >= 0 ? index : 999;
+    }
+
+    async function loadImageLibraryItems(shouldSync = true) {
+      const autoItems = collectImageLibraryItems();
+      if (shouldSync) await syncAutoImageLibraryItems(autoItems);
+      const { data, error } = await client.from("image_library").select("*").order("is_favorite", { ascending: false }).order("updated_at", { ascending: false });
+      if (error) {
+        console.warn("image_library load failed, using auto library fallback", error);
+        return autoItems;
+      }
+      const byUrl = new Map(autoItems.map((item) => [item.url, item]));
+      return (data || []).map((row) => normalizeLibraryRow(row, byUrl.get(row.url))).filter((item) => item.url);
+    }
+
+    async function syncAutoImageLibraryItems(autoItems) {
+      if (!autoItems.length) return;
+      const rows = autoItems.map((item) => ({
+        url: item.url,
+        region: item.region,
+        prefecture: item.prefecture,
+        title: item.title,
+        source_tour_id: item.source_tour_id || null
+      }));
+      const { error } = await client.from("image_library").upsert(rows, { onConflict: "url", ignoreDuplicates: true });
+      if (error) console.warn("image_library sync skipped", error);
+    }
+
+    function normalizeLibraryRow(row, fallback = {}) {
+      return {
+        key: libraryKey(row.url || fallback.url),
+        url: row.url || fallback.url,
+        region: row.region || fallback.region || "其他",
+        prefecture: row.prefecture || fallback.prefecture || "未分類",
+        title: row.title || fallback.title || "",
+        note: row.note || "",
+        is_favorite: Boolean(row.is_favorite),
+        source_tour_id: row.source_tour_id || fallback.source_tour_id || null
+      };
+    }
+
+    function libraryKey(url) {
+      let hash = 0;
+      String(url || "").split("").forEach((char) => {
+        hash = ((hash << 5) - hash) + char.charCodeAt(0);
+        hash |= 0;
+      });
+      return `img${Math.abs(hash)}`;
     }
 
     function collectImageLibraryItems() {
@@ -1046,7 +1168,8 @@
         [payload.image, tour.hero_image].forEach((url) => addLibraryItem(items, seen, url, {
           region: baseRegion,
           text: baseText,
-          title: payload.title || tour.title || "橫幅圖片"
+          title: payload.title || tour.title || "橫幅圖片",
+          source_tour_id: tour.id
         }));
         (payload.days || []).forEach((day) => {
           const images = Array.isArray(day?.[2]) ? day[2] : day?.[2] ? [day[2]] : [];
@@ -1055,7 +1178,8 @@
           images.forEach((url) => addLibraryItem(items, seen, url, {
             region: baseRegion,
             text: `${baseText} ${dayTitle} ${dayBody}`,
-            title: dayTitle.replace(/^Day\s*\d+\s*/i, "") || payload.title || tour.title || "DAY 圖片"
+            title: dayTitle.replace(/^Day\s*\d+\s*/i, "") || payload.title || tour.title || "DAY 圖片",
+            source_tour_id: tour.id
           }));
         });
       });
@@ -1067,10 +1191,14 @@
       seen.add(url);
       const region = meta.region || inferRegion(meta.text || "") || "其他";
       items.push({
+        key: libraryKey(url),
         url,
         region,
         prefecture: inferPrefecture(meta.text || "", region),
-        title: meta.title || ""
+        title: meta.title || "",
+        note: "",
+        is_favorite: false,
+        source_tour_id: meta.source_tour_id || null
       });
     }
 
