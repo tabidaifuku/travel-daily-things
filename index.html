@@ -72,6 +72,7 @@
     .tour-card { overflow: hidden; display: grid; }
     .tour-image { aspect-ratio: 21 / 8; min-height: 180px; background-size: cover; background-position: center; }
     .tour-body { padding: 16px; display: grid; gap: 12px; }
+    .tour-body .primary { justify-self: start; min-width: 132px; max-width: 100%; }
     .tour-title { font-size: 20px; font-weight: 900; margin: 0; }
     .tags { display: flex; gap: 8px; flex-wrap: wrap; }
     .tag { display: inline-flex; align-items: center; min-height: 26px; padding: 0 9px; border-radius: 999px; background: var(--soft); color: var(--green-dark); font-size: 13px; font-weight: 700; }
@@ -148,6 +149,7 @@
       .hero { min-height: auto; padding-bottom: 12px; }
       .day-collage { grid-template-columns: 1fr; }
       .meal-grid { grid-template-columns: 1fr; }
+      .tour-body .primary { justify-self: stretch; width: 100%; }
     }
   </style>
 </head>
