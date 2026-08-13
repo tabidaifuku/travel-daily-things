@@ -753,7 +753,7 @@
     }
 
     async function uploadPendingTourImages() {
-      const uploadKey = currentId || slugify($("title").value || "new-tour") || `tour-${Date.now()}`;
+      const uploadKey = currentId ? safeStorageSegment(currentId) : createUploadKey();
       if ($("heroImageFile").files.length) {
         const urls = await uploadFiles("heroImageFile", `tours/${uploadKey}/hero`, "heroUploadMessage");
         if (urls[0]) {
@@ -836,7 +836,7 @@
       }
       for (const [index, file] of files.entries()) {
         $(messageId).textContent = `圖片上傳中 ${index + 1}/${files.length}...`;
-        const path = `${folder}/${Date.now()}-${index + 1}-${safeFileName(file)}`;
+        const path = `${safeStoragePath(folder)}/${Date.now()}-${index + 1}-${safeFileName(file)}`;
         const { error } = await client.storage.from(imageBucket).upload(path, file, {
           cacheControl: "31536000",
           contentType: file.type,
@@ -852,8 +852,26 @@
 
     function safeFileName(file) {
       const extension = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-      const base = file.name.replace(/\.[^.]+$/, "").normalize("NFKD").replace(/[^\w-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "image";
+      const base = file.name.replace(/\.[^.]+$/, "").normalize("NFKD").replace(/[^a-zA-Z0-9-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "image";
       return `${base}.${extension}`;
+    }
+
+    function createUploadKey() {
+      const random = Math.random().toString(36).slice(2, 8);
+      return `tour-${Date.now()}-${random}`;
+    }
+
+    function safeStoragePath(path) {
+      return String(path).split("/").map(safeStorageSegment).filter(Boolean).join("/");
+    }
+
+    function safeStorageSegment(value) {
+      return String(value || "")
+        .normalize("NFKD")
+        .replace(/[^a-zA-Z0-9_-]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "")
+        .toLowerCase() || "item";
     }
 
     async function deleteTour() {
