@@ -125,8 +125,10 @@
     .modal-title-block { min-width: 0; }
     .modal-title-block h2 { overflow-wrap: anywhere; word-break: break-word; }
     .modal-head button { flex: 0 0 auto; white-space: nowrap; min-width: 58px; padding: 0 12px; }
+    .modal-tools { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
     .modal-body { padding: 18px; display: grid; gap: 16px; align-items: start; }
     .tour-hero-photo { width: 100%; aspect-ratio: 21 / 8; border-radius: 8px; background-size: cover; background-position: center; border: 1px solid var(--line); margin-bottom: 14px; }
+    .print-image { display: none; }
     .info-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
     .info-item { background: #f8f5ed; border: 1px solid #e7decd; border-radius: 6px; padding: 10px; }
     .info-item span { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
@@ -173,6 +175,50 @@
       .day-collage { grid-template-columns: 1fr; }
       .meal-grid { grid-template-columns: 1fr; }
       .tour-body .primary { justify-self: stretch; width: 100%; }
+      .modal-tools { justify-content: flex-start; }
+    }
+
+    @page { size: A4; margin: 8mm; }
+
+    @media print {
+      html, body { width: 100%; }
+      body { background: #fff; font-size: 15.5px; }
+      main { display: none; }
+      .modal-bg.open { position: static; display: block; padding: 0; background: #fff; }
+      .modal { width: 100%; max-width: none; max-height: none; overflow: visible; border: 0; box-shadow: none; }
+      .modal-head { position: static; padding: 0 0 14px; background: #fff; border-bottom: 0; }
+      .modal-title-block h2, #modalTitle { font-size: 28px; line-height: 1.25; margin-bottom: 6px; }
+      #modalSubtitle { font-size: 16px; line-height: 1.5; }
+      .modal-tools, .lead-panel { display: none !important; }
+      .modal-body { padding: 0; display: block; }
+      .detail-toggle { display: none !important; }
+      .day-detail { display: block !important; }
+      .tour-hero-photo { aspect-ratio: 21 / 8; max-height: none; border: 0; border-radius: 0; }
+      .info-strip { grid-template-columns: repeat(3, 1fr); font-size: 15px; }
+      .days { gap: 16px; }
+      .day { break-inside: auto; page-break-inside: auto; padding-bottom: 14px; line-height: 1.75; }
+      .day-title { break-after: avoid; page-break-after: avoid; margin-bottom: 11px; font-size: 19px; }
+      .day-collage { break-inside: avoid; page-break-inside: avoid; width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 8px; margin-bottom: 12px; }
+      .day-photo { width: 100%; aspect-ratio: 4 / 3; max-height: none; }
+      .tour-hero-photo, .day-photo { background-image: none !important; height: auto; overflow: hidden; }
+      .print-image { display: block; width: 100%; height: 100%; object-fit: cover; }
+      .tour-hero-photo .print-image { aspect-ratio: 21 / 8; }
+      .day-photo .print-image { aspect-ratio: 4 / 3; }
+      .day-detail { margin-top: 9px; padding: 12px 14px; font-size: 16px; line-height: 1.75; }
+      .day-summary { padding: 11px; }
+      .meal-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; font-size: 15px; line-height: 1.55; }
+      .meal-chip, .meal-chip:nth-child(4) { grid-column: auto !important; padding: 9px; }
+      .flight-box { margin-bottom: 12px; border-radius: 0; break-inside: auto; page-break-inside: auto; }
+      .flight-head { break-after: avoid; page-break-after: avoid; }
+      .flight-head { padding: 11px 12px; }
+      .flight-head h3 { font-size: 19px; }
+      .flight-note { font-size: 13px; }
+      .flight-table { padding: 0; }
+      .flight-row { break-inside: avoid; page-break-inside: avoid; grid-template-columns: 58px 1.05fr .9fr .9fr 24px .9fr !important; gap: 7px; padding: 10px; font-size: 13.5px; line-height: 1.4; }
+      .flight-type { place-items: center !important; padding: 5px; }
+      .flight-arrow { display: block !important; }
+      .flight-time { font-size: 15px; }
+      .tour-hero-photo, .day-photo { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
     }
   </style>
 </head>
@@ -211,7 +257,11 @@
           <h2 id="modalTitle">行程介紹</h2>
           <p class="muted" id="modalSubtitle"></p>
         </div>
-        <button class="secondary" type="button" onclick="closeTour()">關閉</button>
+        <div class="modal-tools">
+          <button class="ghost" type="button" onclick="shareCurrentTour()">複製連結</button>
+          <button class="ghost" type="button" onclick="printCurrentTour()">列印 PDF</button>
+          <button class="secondary" type="button" onclick="closeTour()">關閉</button>
+        </div>
       </div>
       <div class="modal-body">
         <article>
@@ -248,6 +298,10 @@
 
     const $ = (id) => document.getElementById(id);
     const tours = {};
+    const sharedTourId = new URLSearchParams(location.search).get("tour");
+    let currentTourName = "";
+    let currentTour = null;
+    let openedSharedTour = false;
 
     renderTourCards();
     loadPublishedTours();
@@ -266,7 +320,7 @@
             <p class="muted tour-subtitle">${tour.subtitle || "喜歡這個行程可以先送出需求，後續會再聯繫確認。"}</p>
             <div class="card-actions">
               <div class="price">${tour.price || tour.info?.find(([label]) => label === "價格")?.[1] || "詢問後報價"}</div>
-              <button class="primary" type="button" onclick="selectTour('${name.replaceAll("'", "\\'")}')">我要詢問</button>
+              <button class="primary" type="button" onclick="selectTour('${escapeJs(name)}')">我要詢問</button>
             </div>
           </div>
         </article>
@@ -282,12 +336,15 @@
         const title = payload.title || row.title;
         tours[title] = {
           ...payload,
+          id: row.id,
+          slug: row.slug,
           subtitle: payload.subtitle || row.subtitle,
           image: payload.image || row.hero_image,
           price: payload.price || row.price
         };
       });
       renderTourCards();
+      openSharedTour();
     }
 
     function scrollToTours() {
@@ -299,11 +356,14 @@
       if (!fallbackName) return;
       const selectedName = tours[name] ? name : fallbackName;
       const tour = tours[selectedName];
+      currentTourName = selectedName;
+      currentTour = tour;
       $("modalTitle").textContent = selectedName;
       $("modalSubtitle").textContent = tour.subtitle;
       $("tourName").value = selectedName;
       $("modalPhoto").classList.toggle("hidden", !tour.image);
       $("modalPhoto").style.cssText = imageStyle(tour.image, tour.heroStyle);
+      $("modalPhoto").innerHTML = tour.image ? printImageHtml(tour.image, tour.heroStyle, selectedName) : "";
       $("modalInfo").innerHTML = (tour.info || []).map(([label, value]) => `<div class="info-item"><span>${label}</span><strong>${value}</strong></div>`).join("");
       $("modalFlights").innerHTML = renderFlights(tour.flights || []);
       $("modalHighlights").innerHTML = (tour.highlights || []).map((item) => `<div class="highlight">${item}</div>`).join("");
@@ -316,6 +376,32 @@
       $("tourModal").scrollTop = 0;
       const modal = document.querySelector(".modal");
       if (modal) modal.scrollTop = 0;
+    }
+
+    function openSharedTour() {
+      if (openedSharedTour || !sharedTourId || !Object.keys(tours).length) return;
+      const match = Object.entries(tours).find(([name, tour]) => {
+        return tour.id === sharedTourId || tour.slug === sharedTourId || name === sharedTourId;
+      });
+      if (!match) return;
+      openedSharedTour = true;
+      selectTour(match[0]);
+    }
+
+    async function shareCurrentTour() {
+      if (!currentTourName || !currentTour) return;
+      const id = currentTour.id || currentTour.slug || currentTourName;
+      const url = `${location.origin}${location.pathname}?tour=${encodeURIComponent(id)}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        alert("行程連結已複製。");
+      } catch (error) {
+        prompt("請複製這個行程連結：", url);
+      }
+    }
+
+    function printCurrentTour() {
+      window.print();
     }
 
     function renderDay(day, index) {
@@ -335,7 +421,7 @@
           <div class="day-content">
             <div class="day-title"><span>第 ${index + 1} 天</span>${routeTitle}</div>
             ${collageImages.length ? `<div class="day-collage">
-              ${collageImages.map((image, imageIndex) => `<div class="day-photo" style="${imageStyle(image, dayImageStyles[imageIndex])}"></div>`).join("")}
+              ${collageImages.map((image, imageIndex) => `<div class="day-photo" style="${imageStyle(image, dayImageStyles[imageIndex])}">${printImageHtml(image, dayImageStyles[imageIndex], routeTitle)}</div>`).join("")}
             </div>` : ""}
             <div class="detail-toggle"><button type="button" onclick="toggleDayDetail('${detailId}', this)">展開行程內容⌄</button></div>
             <div class="day-detail" id="${detailId}">${detail}</div>
@@ -354,6 +440,25 @@
       const zoom = Number(style.zoom ?? 100);
       const size = zoom === 100 ? "cover" : `${zoom}%`;
       return `background-image:url('${String(url || "").replaceAll("'", "\\'")}');background-position:${x}% ${y}%;background-size:${size};`;
+    }
+
+    function printImageHtml(url, style = {}, alt = "") {
+      if (!url) return "";
+      const x = Number(style.x ?? 50);
+      const y = Number(style.y ?? 50);
+      return `<img class="print-image" src="${escapeAttr(url)}" alt="${escapeAttr(alt || "行程圖片")}" style="object-position:${x}% ${y}%">`;
+    }
+
+    function escapeJs(value) {
+      return String(value || "").replaceAll("\\", "\\\\").replaceAll("'", "\\'");
+    }
+
+    function escapeAttr(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
     }
 
     function toggleDayDetail(id, button) {
