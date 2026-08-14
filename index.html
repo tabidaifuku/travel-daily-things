@@ -328,7 +328,7 @@
           ${tour.image ? `<div class="tour-image" style="${imageStyle(tour.image, tour.heroStyle)}"></div>` : ""}
           <div class="tour-body">
             <h3 class="tour-title">${name}</h3>
-            <div class="tags"><span class="tag">行程小本本</span><span class="tag">${findInfoValue(tourInfo(tour), "天數") || "可詢問"}</span>${tour.departureDate ? `<span class="tag">${tour.departureDate}</span>` : ""}<span class="tag">可客製</span></div>
+            <div class="tags"><span class="tag">${tourRegion(tour, name)}</span><span class="tag">${findInfoValue(tourInfo(tour), "天數") || "可詢問"}</span>${tour.departureDate ? `<span class="tag">${tour.departureDate} 出發</span>` : ""}</div>
             <p class="muted tour-subtitle">${tour.subtitle || "喜歡這個行程可以先送出需求，後續會再聯繫確認。"}</p>
             <div class="card-actions">
               <div class="price">${tour.price || tour.info?.find(([label]) => label === "價格")?.[1] || "詢問後報價"}</div>
@@ -353,6 +353,7 @@
           subtitle: payload.subtitle || row.subtitle,
           image: payload.image || row.hero_image,
           price: payload.price || row.price,
+          region: payload.region || "",
           departureDate: payload.departureDate || findInfoValue(payload.info, "出發日期")
         };
       });
@@ -413,6 +414,28 @@
     function findInfoValue(info = [], label) {
       const row = (info || []).find(([itemLabel]) => itemLabel === label);
       return row?.[1] || "";
+    }
+
+    function tourRegion(tour, name = "") {
+      const source = `${tour.region || ""} ${name} ${tour.title || ""} ${tour.subtitle || ""}`;
+      const matches = [
+        "北海道",
+        "東北",
+        "關東",
+        "東京",
+        "中部",
+        "北陸",
+        "關西",
+        "中國",
+        "四國",
+        "九州",
+        "沖繩"
+      ];
+      const match = matches.find((region) => source.includes(region));
+      if (match === "東京") return "關東";
+      if (match === "中國") return "中國・四國";
+      if (match === "沖繩") return "九州・沖繩";
+      return match || tour.region || "日本";
     }
 
     async function shareCurrentTour() {
