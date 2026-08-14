@@ -328,7 +328,7 @@
           ${tour.image ? `<div class="tour-image" style="${imageStyle(tour.image, tour.heroStyle)}"></div>` : ""}
           <div class="tour-body">
             <h3 class="tour-title">${name}</h3>
-            <div class="tags"><span class="tag">行程小本本</span><span class="tag">${(tour.info?.[0]?.[1]) || "可詢問"}</span><span class="tag">可客製</span></div>
+            <div class="tags"><span class="tag">行程小本本</span><span class="tag">${findInfoValue(tourInfo(tour), "天數") || "可詢問"}</span>${tour.departureDate ? `<span class="tag">${tour.departureDate}</span>` : ""}<span class="tag">可客製</span></div>
             <p class="muted tour-subtitle">${tour.subtitle || "喜歡這個行程可以先送出需求，後續會再聯繫確認。"}</p>
             <div class="card-actions">
               <div class="price">${tour.price || tour.info?.find(([label]) => label === "價格")?.[1] || "詢問後報價"}</div>
@@ -352,7 +352,8 @@
           slug: row.slug,
           subtitle: payload.subtitle || row.subtitle,
           image: payload.image || row.hero_image,
-          price: payload.price || row.price
+          price: payload.price || row.price,
+          departureDate: payload.departureDate || findInfoValue(payload.info, "出發日期")
         };
       });
       renderTourCards();
@@ -376,7 +377,7 @@
       $("modalPhoto").classList.toggle("hidden", !tour.image);
       $("modalPhoto").style.cssText = imageStyle(tour.image, tour.heroStyle);
       $("modalPhoto").innerHTML = tour.image ? printImageHtml(tour.image, tour.heroStyle, selectedName) : "";
-      $("modalInfo").innerHTML = (tour.info || []).map(([label, value]) => `<div class="info-item"><span>${label}</span><strong>${value}</strong></div>`).join("");
+      $("modalInfo").innerHTML = tourInfo(tour).map(([label, value]) => `<div class="info-item"><span>${label}</span><strong>${value}</strong></div>`).join("");
       $("modalFlights").innerHTML = renderFlights(tour.flights || []);
       $("modalHighlights").innerHTML = (tour.highlights || []).map((item) => `<div class="highlight">${item}</div>`).join("");
       $("modalDays").innerHTML = (tour.days || []).map((day, index) => renderDay(day, index)).join("");
@@ -398,6 +399,20 @@
       if (!match) return;
       openedSharedTour = true;
       selectTour(match[0]);
+    }
+
+    function tourInfo(tour) {
+      const info = [...(tour.info || [])].filter(([, value]) => value);
+      if (tour.departureDate && !findInfoValue(info, "出發日期")) {
+        const dayIndex = info.findIndex(([label]) => label === "天數");
+        info.splice(dayIndex >= 0 ? dayIndex + 1 : 0, 0, ["出發日期", tour.departureDate]);
+      }
+      return info;
+    }
+
+    function findInfoValue(info = [], label) {
+      const row = (info || []).find(([itemLabel]) => itemLabel === label);
+      return row?.[1] || "";
     }
 
     async function shareCurrentTour() {
