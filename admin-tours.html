@@ -508,6 +508,7 @@
       if (!skipConfirm && !confirmLeaveUnsaved()) return;
       currentId = null;
       $("tourForm").reset();
+      resetImageState();
       $("daysCount").value = 5;
       renderDayEditors(5);
       $("saveMessage").textContent = "已建立空白編輯畫面，填好後按儲存。";
@@ -554,6 +555,7 @@
       $("editorPanel").classList.add("editor-collapsed");
       if ($("tourSelect")) $("tourSelect").value = "";
       $("editorModeHint").textContent = "請先選擇已儲存行程，或按「＋ 新增行程」。";
+      resetImageState();
       markClean();
     }
 
@@ -1224,6 +1226,16 @@
       if (preview.dataset.localUrl) URL.revokeObjectURL(preview.dataset.localUrl);
       delete preview.dataset.localUrl;
       delete preview.dataset.previewSrc;
+    }
+
+    function resetImageState() {
+      Object.keys(pendingDayImageFiles).forEach((key) => delete pendingDayImageFiles[key]);
+      $("heroImage").value = "";
+      $("heroImageFile").value = "";
+      clearLocalPreview("heroPreview");
+      setImageStyle("hero", { x: 50, y: 50, zoom: 100 });
+      updatePreview("heroPreview", "", "hero");
+      $("heroUploadMessage").textContent = "";
     }
 
     function clearHeroImage() {
