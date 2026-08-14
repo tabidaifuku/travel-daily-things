@@ -163,6 +163,7 @@
           <div class="field"><label for="price">售價</label><input id="price" placeholder="NT$ 49,800 起"></div>
           <div class="field"><label for="daysCount">旅遊天數</label><select id="daysCount"></select></div>
         </div>
+        <div class="field"><label for="departureDate">出發日期</label><input id="departureDate" placeholder="例如：2026/10/12 出發、每週三六出發、歡迎指定日期"></div>
         <input id="heroImage" type="hidden">
         <div class="image-controls">
           <h4>旅遊主題橫幅</h4>
@@ -826,8 +827,9 @@
     function renderPreview(payload) {
       const info = [
         ["天數", `${$("daysCount").value}天`],
+        ["出發日期", payload.departureDate],
         ["價格", payload.price || "未填"]
-      ];
+      ].filter(([, value]) => value);
       return `
         ${payload.image ? `<div class="preview-photo" style="${previewImageStyle(payload.image, payload.heroStyle)}"></div>` : ""}
         <div class="preview-info">
@@ -1347,9 +1349,14 @@
         title: $("title").value.trim(),
         region: $("region").value,
         subtitle: $("subtitle").value.trim(),
+        departureDate: $("departureDate").value.trim(),
         image: $("heroImage").value.trim(),
         heroStyle: collectHeroStyle(),
-        info: [["天數", `${$("daysCount").value}天`], ["價格", $("price").value.trim()]],
+        info: [
+          ["天數", `${$("daysCount").value}天`],
+          ["出發日期", $("departureDate").value.trim()],
+          ["價格", $("price").value.trim()]
+        ].filter(([, value]) => value),
         price: $("price").value.trim(),
         flights,
         highlights: [],
@@ -1407,6 +1414,7 @@
       setSelectValue("region", payload.region || getTourRegion(row));
       $("subtitle").value = payload.subtitle || row.subtitle || "";
       $("price").value = payload.price || row.price || "";
+      $("departureDate").value = payload.departureDate || findInfoValue(payload.info, "出發日期") || "";
       $("heroImage").value = payload.image || row.hero_image || "";
       setImageStyle("hero", payload.heroStyle);
       const days = (payload.days || []).map(normalizeDay);
@@ -1433,6 +1441,11 @@
           syncRangeValue(id);
         }
       });
+    }
+
+    function findInfoValue(info = [], label) {
+      const row = (info || []).find(([itemLabel]) => itemLabel === label);
+      return row?.[1] || "";
     }
 
     function markDirty() {
