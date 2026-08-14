@@ -380,7 +380,7 @@
       $("modalFlights").innerHTML = renderFlights(tour.flights || []);
       $("modalHighlights").innerHTML = (tour.highlights || []).map((item) => `<div class="highlight">${item}</div>`).join("");
       $("modalDays").innerHTML = (tour.days || []).map((day, index) => renderDay(day, index)).join("");
-      $("modalNotice").innerHTML = renderNotice(tour.notice || defaultTravelNotice);
+      $("modalNotice").innerHTML = renderNotice(defaultTravelNotice);
       $("modalNotice").classList.remove("hidden");
       $("formMessage").textContent = "";
       $("tourModal").classList.add("open");
